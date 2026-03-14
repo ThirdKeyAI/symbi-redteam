@@ -1,0 +1,25 @@
+# Symbiont runtime state
+.symbiont/
+
+# Scan output (persisted via docker-compose volumes)
+audit-logs/
+scan-results/
+
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment (secrets should use a secrets manager, not env files)
+.env
+.env.local

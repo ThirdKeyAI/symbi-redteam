@@ -1,0 +1,77 @@
+# =============================================================================
+# docker-compose.yml -- Governed nmap agent with resource limits
+#
+# Key security decisions:
+#   - CAP_NET_RAW: Required for nmap SYN scans. Granted explicitly.
+#   - All other capabilities: Dropped.
+#   - Read-only root filesystem: Agent can't modify its own code.
+#   - tmpfs for /tmp: Ephemeral scratch space, not persisted.
+#   - Memory/CPU limits: Prevents resource exhaustion.
+#   - No network_mode=host: Container gets its own network namespace.
+#   - Policies mounted read-only: Agent can't modify its own governance.
+# =============================================================================
+
+services:
+  agent:
+    build: .
+    image: symbi-nmap-agent:latest
+
+    # Grant only the capability nmap needs for raw socket operations.
+    # Everything else is dropped.
+    cap_add:
+      - NET_RAW
+    cap_drop:
+      - ALL
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Resource limits -- prevent runaway scans from consuming the host
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+          cpus: "0.25"
+
+    # Read-only root filesystem -- agent can't modify its own code or policies
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+
+    # Volumes
+    volumes:
+      # Policies: read-only mount. Operator can update without rebuild.
+      - ./policies:/app/policies:ro
+
+      # Audit logs: persist to host for compliance/review
+      - ./audit-logs:/app/.symbiont/audit
+
+      # Scan results: persist for historical analysis
+      - ./scan-results:/app/.symbiont/scans
+
+    # Runtime configuration
+    environment:
+      - SYMBI_LOG_LEVEL=info
+      - SYMBI_RUNTIME_MODE=production
+      - RUST_LOG=symbi=info,cedar=warn
+
+      # LLM provider for the Reason phase
+      # In production, use a secrets manager -- not env vars
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+
+      # Scan safety defaults
+      - NMAP_MAX_RATE=1000          # Max packets/sec
+      - NMAP_DEFAULT_TIMING=T3      # Normal timing (T4=aggressive, T5=insane)
+
+    # No host networking -- container gets its own namespace
+    # The agent scans from inside the container's network context
+    networks:
+      - scan-net
+
+networks:
+  scan-net:
+    driver: bridge
