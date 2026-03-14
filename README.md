@@ -1,4 +1,4 @@
-# symbi-nmap-agent
+# symbi-example-nmap
 
 **Adding secured intelligence to dumb tools with Symbiont.**
 
