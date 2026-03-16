@@ -1,132 +1,168 @@
-# symbi-example-nmap
+# symbi-redteam
 
-**Adding secured intelligence to dumb tools with Symbiont.**
-
-This example wraps [nmap](https://nmap.org) -- a powerful but unintelligent network scanner -- with a Symbiont agent that adds AI reasoning, policy governance, and cryptographic audit trails. The agent decides *what* to scan, *interprets* results, and *recommends* remediation -- all inside an ORGA-enforced security perimeter that prevents dangerous or unauthorized scans.
+Governed autonomous penetration testing platform powered by [Symbiont](https://github.com/ThirdKeyAI/symbiont). An AI engagement controller orchestrates a multi-phase pen test across a curated offensive toolchain where every tool has a different risk profile, every action is Cedar policy-gated, and every finding is evidence-chained.
 
 ## The Problem
 
-nmap is a blunt instrument. It does exactly what you tell it -- including aggressive OS fingerprinting against production servers, full-port SYN floods against hosts you don't own, or UDP scans that trigger IDS alerts. There is no built-in concept of:
+Penetration testing firms face four persistent problems:
 
-- **Authorization**: Is this scan permitted by policy?
-- **Proportionality**: Is this scan type appropriate for the target?
-- **Interpretation**: What do these results actually mean?
-- **Audit**: Who requested this scan, when, and what happened?
+1. **Scope creep** — testers accidentally hit out-of-scope assets
+2. **Evidence chain integrity** — tampering risk in findings
+3. **Junior tester supervision** — unsupervised high-risk tool usage
+4. **Reporting overhead** — 40% of engagement time writing reports
 
-## The Solution: ORGA-Governed Intelligence
+## The Solution: ORGA-Governed Multi-Agent Pen Testing
 
-Symbiont's ORGA loop (Observe-Reason-Gate-Act) wraps nmap with a governed AI agent:
-
-```
-User Request: "Check if our staging servers are exposed"
-         |
-         v
-  ┌─────────────────────────────────────────────────────┐
-  │  OBSERVE                                            │
-  │  - Parse the request                                │
-  │  - Load target context (allowed CIDRs, scan history)│
-  │  - Check current scan state                         │
-  └──────────────────────┬──────────────────────────────┘
-                         v
-  ┌─────────────────────────────────────────────────────┐
-  │  REASON (LLM)                                       │
-  │  - Determine appropriate scan type (SYN, service,   │
-  │    version detection, etc.)                         │
-  │  - Select targets from allowed ranges               │
-  │  - Propose nmap command with flags                  │
-  └──────────────────────┬──────────────────────────────┘
-                         v
-  ┌─────────────────────────────────────────────────────┐
-  │  GATE (outside LLM influence -- cannot be bypassed) │
-  │  - Cedar policy: Is this CIDR in allowed ranges?    │
-  │  - Cedar policy: Is this scan type permitted?       │
-  │  - Cedar policy: Rate limit (max scans/hour)?       │
-  │  - Cedar policy: No aggressive scans without        │
-  │    explicit approval?                               │
-  │  - DENY or ALLOW                                    │
-  └──────────────────────┬──────────────────────────────┘
-                         v
-  ┌─────────────────────────────────────────────────────┐
-  │  ACT                                                │
-  │  - Execute approved nmap command in sandbox         │
-  │  - Parse XML output                                 │
-  │  - Return to OBSERVE for interpretation loop        │
-  └─────────────────────────────────────────────────────┘
-         |
-         v
-  ┌─────────────────────────────────────────────────────┐
-  │  REASON (interpretation pass)                       │
-  │  - Analyze open ports, services, vulnerabilities    │
-  │  - Cross-reference with known CVEs                  │
-  │  - Generate prioritized remediation report          │
-  └─────────────────────────────────────────────────────┘
-         |
-         v
-  Structured Report + Cryptographic Audit Entry
-```
-
-The critical insight: **the Gate phase operates outside LLM influence**. The AI cannot talk its way past the policy engine. Even if a prompt injection attempts to convince the LLM to scan unauthorized targets, the Cedar policy evaluation denies the action at the Gate -- and the denial is logged to a tamper-evident audit trail.
-
-## Repository Structure
+Seven specialized agents execute a PTES-methodology pen test. Every tool invocation passes through Symbiont's ORGA (Observe-Reason-Gate-Act) loop with Cedar policy enforcement:
 
 ```
-symbi-nmap-agent/
-├── README.md                    # This file
-├── Dockerfile                   # Container: nmap + symbi runtime
-├── docker-compose.yml           # Run with resource limits
-├── symbi.toml                   # Runtime configuration
-├── agents/
-│   └── nmap-recon.dsl           # Agent definition (Symbiont DSL)
-├── policies/
-│   ├── scan-authorization.cedar # What targets and scan types are allowed
-│   ├── rate-limits.cedar        # Scan frequency limits
-│   └── escalation.cedar         # When to require human approval
-├── scripts/
-│   ├── nmap-wrapper.sh          # Sandboxed nmap execution wrapper
-│   └── parse-nmap-xml.py        # XML output parser
-└── src/
-    └── tools.rs                 # MCP tool definitions for nmap operations
+engagement-controller
+├── recon agent         → nmap, whois, dig, whatweb, amass
+├── enum agent          → nikto, gobuster, enum4linux, smbclient, snmpwalk
+├── vuln-assess agent   → nmap NSE, nuclei, sqlmap (detect), searchsploit
+├── exploit agent       → hydra, metasploit, sqlmap (exploit)  [human-gated]
+├── post-exploit agent  → impacket, pypykatz, chisel, ligolo   [human-gated]
+└── reporter agent      → executive, technical, remediation reports
 ```
+
+**The critical insight:** The Gate operates outside LLM influence. An AI plans Metasploit usage; a human approves each exploitation attempt. Cedar policies cannot be bypassed through prompt injection, social engineering, or creative reasoning.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  Engagement Controller                    │
+│    Maintains state · Enforces methodology · Orchestrates │
+└───────┬───────┬───────┬───────┬───────┬───────┬─────────┘
+        │       │       │       │       │       │
+   ┌────▼──┐ ┌─▼───┐ ┌─▼───┐ ┌▼────┐ ┌▼────┐ ┌▼────────┐
+   │ Recon │ │Enum │ │Vuln │ │Expl.│ │Post │ │Reporter │
+   │       │ │     │ │     │ │     │ │Expl.│ │         │
+   └───┬───┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └────┬────┘
+       │        │       │       │       │          │
+   ┌───▼────────▼───────▼───────▼───────▼──────────▼─────┐
+   │              MCP Tool Layer (31 tools)                │
+   │  Rust implementations · Cedar-gated · Audit-logged   │
+   ├──────────────────────────────────────────────────────┤
+   │              Shell Wrappers (19 scripts)              │
+   │  Arg validation · Timeout · JSON output · Defense     │
+   ├──────────────────────────────────────────────────────┤
+   │            Offensive Toolchain (Kali)                 │
+   │  nmap · nikto · nuclei · sqlmap · hydra · metasploit │
+   │  impacket · pypykatz · chisel · ligolo · gobuster    │
+   └──────────────────────────────────────────────────────┘
+```
+
+## Risk-Tiered Tool Authorization
+
+| Risk Level | Tools | Authorization |
+|------------|-------|---------------|
+| Low | nmap, whois, dig, whatweb, amass | Auto-allowed within scope |
+| Medium | nikto, gobuster, enum4linux, smbclient, snmpwalk | Rate-limited |
+| Medium-High | nmap NSE, nuclei, sqlmap (detect), searchsploit | Non-production only |
+| High | hydra, metasploit, sqlmap (exploit) | Human approval required |
+| Highest | impacket, pypykatz, chisel, ligolo | Human approval + scope revalidation |
+
+## Cedar Policy Model
+
+Seven policy files enforce governance at every level:
+
+| Policy | Purpose |
+|--------|---------|
+| `scope.cedar` | Target CIDR enforcement, excluded assets |
+| `tool-authorization.cedar` | Per-tool risk-tiered authorization |
+| `phase-gates.cedar` | PTES methodology enforcement |
+| `rate-limits.cedar` | Per-target and global frequency limits |
+| `escalation.cedar` | Human approval with time-limited expiry |
+| `evidence.cedar` | Evidence chain integrity requirements |
+| `time-bounds.cedar` | Engagement window enforcement |
+
+## Data Layer
+
+**SQLite** stores structured engagement data: findings, tool runs, retests.
+
+**LanceDB** provides semantic search across findings for cross-tool correlation and retest comparison. A service that moved from port 8080 to 8443 still gets matched. A finding described differently by a different scanner still gets correlated.
+
+**Evidence store** archives all tool outputs with SHA-256 integrity hashing, creating a tamper-evident chain from discovery through reporting.
 
 ## Quick Start
 
 ```bash
+# Set your API key
+export ANTHROPIC_API_KEY=your-key
+
 # Build the container
-docker build -t symbi-nmap-agent .
+docker compose build
 
-# Run a governed scan
-docker run --rm \
-  -e SYMBI_LOG_LEVEL=info \
-  -v $(pwd)/policies:/app/policies:ro \
-  symbi-nmap-agent \
-  symbi run nmap-recon --prompt "Scan staging subnet for exposed services"
+# Start the governed pen test platform
+docker compose up
 
-# Or with docker-compose (recommended -- includes resource limits)
-docker-compose run --rm agent \
-  symbi run nmap-recon --prompt "Check 10.0.1.0/24 for open web ports"
+# The engagement controller will:
+# 1. Initialize the engagement
+# 2. Run recon → enum → vuln → exploit → post-exploit → report
+# 3. Generate executive, technical, and remediation reports
+# 4. All in markdown, HTML, and PDF formats
 ```
 
-## What Makes This Different from Just Running nmap
+## Repository Structure
 
-| Capability | Raw nmap | symbi-nmap-agent |
-|---|---|---|
-| Target authorization | None | Cedar policy enforcement |
-| Scan type governance | None | Policy-gated by risk level |
-| Rate limiting | None | Configurable per-target limits |
-| Result interpretation | Raw output | AI-generated analysis + CVE correlation |
-| Remediation guidance | None | Prioritized recommendations |
-| Audit trail | Manual logging | Cryptographic, tamper-evident, automatic |
-| Prompt injection defense | N/A | Gate operates outside LLM influence |
-| Human approval escalation | N/A | Policy-triggered for aggressive scans |
+```
+symbi-redteam/
+├── agents/                    # 7 Symbiont DSL agent definitions
+│   ├── engagement-controller.dsl  # Orchestrator
+│   ├── recon.dsl                  # Reconnaissance
+│   ├── enum.dsl                   # Enumeration
+│   ├── vuln-assess.dsl            # Vulnerability assessment
+│   ├── exploit.dsl                # Exploitation (human-gated)
+│   ├── post-exploit.dsl           # Post-exploitation (human-gated)
+│   └── reporter.dsl              # Report generation
+├── policies/                  # 7 Cedar policy files
+├── src/                       # Rust MCP tool definitions
+│   ├── recon_tools.rs            # 5 recon tools + parse + CVE lookup
+│   ├── enum_tools.rs             # 5 enumeration tools
+│   ├── vuln_tools.rs             # 4 vulnerability tools
+│   ├── exploit_tools.rs          # 4 exploitation tools
+│   ├── postexploit_tools.rs      # 4 post-exploitation tools
+│   ├── evidence_tools.rs         # 5 evidence management tools
+│   ├── reporting.rs              # 4 reporting tools
+│   └── db.rs                     # SQLite + LanceDB layer
+├── scripts/
+│   ├── tool-wrappers/            # 19 sandboxed tool wrappers
+│   └── parse-outputs/            # 9 output parsers
+├── scope/                     # Engagement scope definition
+├── db/                        # Database schema
+├── templates/                 # Report templates
+├── Dockerfile                 # Multi-stage: Rust builder + Kali runtime
+├── docker-compose.yml         # Security-hardened container config
+└── symbi.toml                 # Symbiont runtime configuration
+```
 
 ## Key Design Decisions
 
-**Why Docker (Tier 1) sandbox?** nmap needs raw socket access for SYN scans, which means it needs `CAP_NET_RAW`. We grant this single capability inside the container while dropping everything else. gVisor (Tier 2) would intercept the raw socket syscalls and break nmap's core functionality. Docker with explicit capability management is the right tier here.
+**Kali base image** — Provides the offensive toolchain via apt. Larger image but vastly simpler tool installation and dependency management than building from source.
 
-**Why Cedar over inline policy checks?** Cedar policies are formally verifiable and can be updated without redeploying the agent. An operator can tighten scan authorization (e.g., remove a subnet during a maintenance window) by editing a `.cedar` file -- no code changes, no container rebuild.
+**Hierarchical multi-agent** — The engagement controller delegates to phase agents via `ask()`. Only 2 agents are active concurrently (controller + current phase). This maps naturally to PTES methodology and keeps Cedar policies scoped per phase.
 
-**Why two ORGA passes?** The first pass (scan execution) and second pass (result interpretation) are separate reasoning cycles. This lets the Gate enforce different policies on each: the scan pass checks target authorization, while the interpretation pass can check data classification policies before the report is emitted.
+**Cedar over inline checks** — Cedar policies are formally verifiable, updatable without code changes, and evaluated outside LLM influence. The Gate cannot be prompt-injected.
+
+**SQLite + LanceDB** — Structured data in SQLite for queries, embeddings in LanceDB for semantic search. Single LanceDB collection with type discriminator avoids runtime changes.
+
+**Human approval via CLI** — Symbiont's HumanCritic suspends the ORGA loop and prompts the operator. Approval tokens have configurable expiry (30-60 minutes) enforced by Cedar.
+
+## Comparison
+
+| Capability | Raw Tools | symbi-redteam |
+|------------|-----------|---------------|
+| Scope enforcement | Manual discipline | Cedar policy — automatic |
+| Phase methodology | Tester judgment | Policy-gated transitions |
+| Tool authorization | Honor system | Risk-tiered Cedar policies |
+| Rate limiting | Manual | Automatic per-target + global |
+| Human approval | Verbal/email | CLI prompt with timed expiry |
+| Evidence integrity | Trust-based | SHA-256 hash chains |
+| Audit trail | Manual notes | Cryptographic, tamper-evident |
+| Report generation | 40% of engagement time | Automated from evidence DB |
+| Retest comparison | Manual analyst work | Semantic matching + delta reports |
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.

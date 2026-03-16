@@ -1,53 +1,46 @@
 # =============================================================================
-# symbi.toml -- Runtime configuration for the governed nmap agent
+# symbi.toml -- Runtime configuration for the governed pen test platform
 # =============================================================================
 
 [runtime]
-max_agents = 5                      # Max concurrent scan agents
-memory_limit_mb = 256               # Per-agent memory ceiling
-execution_timeout_seconds = 600     # 10 minute max per scan cycle
+max_agents = 8                      # Concurrent agent count (controller + 1 phase agent active at a time)
+memory_limit_mb = 512               # Per-agent memory ceiling
+execution_timeout_seconds = 1800    # 30 min per phase agent (controller has no timeout)
 
 [security]
 default_sandbox_tier = "docker"     # Tier 1: Docker isolation
 audit_enabled = true                # Cryptographic audit trail
 policy_enforcement = "strict"       # Deny-by-default; all actions need explicit allow
-allow_native_execution = false      # Never run nmap outside the sandbox
+allow_native_execution = false      # Never run tools outside the sandbox
 
 [security.capabilities]
-# Explicit capability whitelist for the nmap tool
-allowed = ["net_raw"]               # SYN scans require raw sockets
+allowed = ["net_raw", "net_admin"]  # SYN scans + tunneling
 denied = ["*"]                      # Deny everything else
 
 [policy]
-# Cedar policy directory -- evaluated at the ORGA Gate phase
 policy_dir = "policies"
-# Default decision when no policy matches
-default_decision = "deny"           # Deny-by-default is critical for security tools
-# Policy evaluation timeout
-evaluation_timeout_ms = 5           # Cedar evaluates in <1ms; 5ms is generous
+default_decision = "deny"
+evaluation_timeout_ms = 5
 
 [audit]
-# Tamper-evident audit trail configuration
 enabled = true
 output_dir = ".symbiont/audit"
-format = "jsonl"                    # One JSON object per line
-hash_chain = true                   # Merkle chain for tamper evidence
-include_tool_args = true            # Log the actual nmap commands executed
-include_tool_output = false         # Don't log raw scan output (can be large)
-rotation = "daily"                  # Rotate audit logs daily
+format = "jsonl"
+hash_chain = true
+include_tool_args = true
+include_tool_output = false
+rotation = "daily"
 
 [vector_db]
 enabled = true
-backend = "lancedb"                 # Embedded -- no external service needed
-collection_name = "nmap_knowledge"  # Store scan history for context
+backend = "lancedb"
+collection_name = "redteam_embeddings"  # Single collection with type discriminator
 
 [mcp]
-# MCP server configuration for tool exposure
 server_port = 8943
 tools_dir = "src"
 
 [agent]
-# Default agent settings
-max_iterations = 10                 # Max ORGA loop iterations per invocation
-model = "claude-sonnet-4-20250514"  # LLM for the Reason phase
-temperature = 0.1                   # Low temperature for deterministic scan planning
+max_iterations = 15                 # Max ORGA loop iterations per phase
+model = "claude-sonnet-4-20250514"
+temperature = 0.1

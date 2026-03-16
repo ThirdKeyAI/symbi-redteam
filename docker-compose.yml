@@ -1,11 +1,11 @@
 # =============================================================================
-# docker-compose.yml -- Governed nmap agent with resource limits
+# docker-compose.yml -- Governed pen test platform with resource limits
 #
 # Key security decisions:
-#   - CAP_NET_RAW: Required for nmap SYN scans. Granted explicitly.
+#   - CAP_NET_RAW + CAP_NET_ADMIN: Required for SYN scans and tunneling.
 #   - All other capabilities: Dropped.
-#   - Read-only root filesystem: Agent can't modify its own code.
-#   - tmpfs for /tmp: Ephemeral scratch space, not persisted.
+#   - Read-only root filesystem: Agent can't modify its own code or policies.
+#   - tmpfs for /tmp: Ephemeral scratch space for Metasploit and tool output.
 #   - Memory/CPU limits: Prevents resource exhaustion.
 #   - No network_mode=host: Container gets its own network namespace.
 #   - Policies mounted read-only: Agent can't modify its own governance.
@@ -14,12 +14,14 @@
 services:
   agent:
     build: .
-    image: symbi-nmap-agent:latest
+    image: symbi-redteam:latest
 
-    # Grant only the capability nmap needs for raw socket operations.
-    # Everything else is dropped.
+    # Grant capabilities needed for the offensive toolchain.
+    # NET_RAW: nmap SYN scans, raw socket operations
+    # NET_ADMIN: chisel/ligolo tunneling, route manipulation
     cap_add:
       - NET_RAW
+      - NET_ADMIN
     cap_drop:
       - ALL
 
@@ -27,31 +29,43 @@ services:
     security_opt:
       - no-new-privileges:true
 
-    # Resource limits -- prevent runaway scans from consuming the host
+    # Resource limits -- Metasploit and nuclei need more than basic nmap
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "1.0"
+          memory: 2G
+          cpus: "2.0"
         reservations:
-          memory: 128M
-          cpus: "0.25"
+          memory: 512M
+          cpus: "0.5"
 
     # Read-only root filesystem -- agent can't modify its own code or policies
     read_only: true
     tmpfs:
-      - /tmp:size=64M
+      - /tmp:size=256M
 
     # Volumes
     volumes:
       # Policies: read-only mount. Operator can update without rebuild.
       - ./policies:/app/policies:ro
 
+      # Scope: read-only. Defines engagement targets.
+      - ./scope:/app/scope:ro
+
       # Audit logs: persist to host for compliance/review
       - ./audit-logs:/app/.symbiont/audit
 
       # Scan results: persist for historical analysis
       - ./scan-results:/app/.symbiont/scans
+
+      # Evidence store: persist finding artifacts
+      - ./evidence:/app/.symbiont/evidence
+
+      # Database: persist SQLite + LanceDB
+      - ./data:/app/.symbiont/data
+
+      # Reports: persist generated reports
+      - ./reports:/app/.symbiont/reports
 
     # Runtime configuration
     environment:
@@ -63,15 +77,18 @@ services:
       # In production, use a secrets manager -- not env vars
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 
-      # Scan safety defaults
-      - NMAP_MAX_RATE=1000          # Max packets/sec
-      - NMAP_DEFAULT_TIMING=T3      # Normal timing (T4=aggressive, T5=insane)
+      # Database paths
+      - SYMBI_DB_PATH=/app/.symbiont/data/redteam.db
+      - SYMBI_LANCE_PATH=/app/.symbiont/data/lance
+
+      # Tool safety defaults
+      - NMAP_MAX_RATE=1000
+      - NMAP_DEFAULT_TIMING=T3
 
     # No host networking -- container gets its own namespace
-    # The agent scans from inside the container's network context
     networks:
-      - scan-net
+      - pentest-net
 
 networks:
-  scan-net:
+  pentest-net:
     driver: bridge

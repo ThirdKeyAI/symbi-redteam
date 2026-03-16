@@ -23,3 +23,7 @@ Thumbs.db
 # Environment (secrets should use a secrets manager, not env files)
 .env
 .env.local
+
+# Superpowers working files
+docs/superpowers/
+docs/plans/

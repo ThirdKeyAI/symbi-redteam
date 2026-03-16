@@ -11,74 +11,152 @@
 //
 // This is the "human-in-the-loop" that enterprises require for high-risk
 // autonomous operations. The agent cannot skip this step.
+//
+// Approval tiers:
+//   - OS fingerprint: 60min expiry (noisy but not destructive)
+//   - Aggressive scan: 30min expiry (can cause service disruption)
+//   - Exploit tools: 30min expiry, per-target (active exploitation)
+//   - Post-exploit tools: 30min expiry, per-target + scope revalidation
+//   - First-time target: approval required (prevents target discovery drift)
+//
+// All approval decisions (granted and denied) are logged to the
+// cryptographic audit trail by the runtime.
 // =============================================================================
 
 // ---------------------------------------------------------------------------
-// SCANS REQUIRING HUMAN APPROVAL
+// OS FINGERPRINTING -- APPROVAL WITH 60-MINUTE EXPIRY
+//
+// OS detection is noisy and can trigger IDS alerts. Requires approval
+// but has a longer expiry window since it is not destructive.
 // ---------------------------------------------------------------------------
 
-// OS fingerprinting on any target requires approval
-// (noisy, can trigger IDS, reveals scanning intent)
 permit (
-    principal == NmapRecon::Agent::"nmap_recon",
-    action == NmapRecon::Action::"execute_scan_type",
+    principal,
+    action == PenTest::Action::"execute_tool",
     resource
 )
 when {
     resource.scan_type == "os_detect" &&
     context.has_human_approval == true &&
-    context.approval_age_minutes < 60           // Approval expires after 1 hour
+    context.approval_age_minutes < 60
 };
 
-// Aggressive scans require approval and are limited to incident response
+// Block OS fingerprinting without approval
+forbid (
+    principal,
+    action == PenTest::Action::"execute_tool",
+    resource
+)
+when {
+    resource.scan_type == "os_detect" &&
+    context.has_human_approval != true
+};
+
+// ---------------------------------------------------------------------------
+// AGGRESSIVE SCANNING -- APPROVAL WITH 30-MINUTE EXPIRY
+//
+// Aggressive scans (-T5, comprehensive NSE scripts) can cause service
+// disruption and generate significant network noise. Tighter expiry.
+// ---------------------------------------------------------------------------
+
 permit (
-    principal == NmapRecon::Agent::"nmap_recon",
-    action == NmapRecon::Action::"execute_scan_type",
+    principal,
+    action == PenTest::Action::"execute_tool",
     resource
 )
 when {
     resource.scan_type == "aggressive" &&
     context.has_human_approval == true &&
-    context.approval_age_minutes < 30 &&        // Tighter expiry for aggressive
-    context.mode == "incident_response"         // Only during active incidents
+    context.approval_age_minutes < 30
 };
 
-// Vulnerability script scans: approval + incident response + non-production only
-permit (
-    principal == NmapRecon::Agent::"nmap_recon",
-    action == NmapRecon::Action::"execute_scan_type",
+// Block aggressive scanning without approval
+forbid (
+    principal,
+    action == PenTest::Action::"execute_tool",
     resource
 )
 when {
-    resource.scan_type == "vuln_script" &&
-    context.has_human_approval == true &&
-    context.approval_age_minutes < 30 &&
-    context.mode == "incident_response" &&
-    resource.environment != "production"
+    resource.scan_type == "aggressive" &&
+    context.has_human_approval != true
 };
 
 // ---------------------------------------------------------------------------
-// APPROVAL AUDIT
+// EXPLOIT TOOLS -- PER-TARGET APPROVAL WITH 30-MINUTE EXPIRY
 //
-// All approval decisions (granted and denied) are logged to the
-// cryptographic audit trail. This creates a tamper-evident record of
-// who approved what, when, and from which channel.
-// ---------------------------------------------------------------------------
-
-// (Audit logging is handled by the runtime, not by Cedar policy.
-//  The policies above gate the actions; the runtime logs everything.)
-
-// ---------------------------------------------------------------------------
-// SCANNING NEW/UNKNOWN TARGETS
-//
-// If a target CIDR hasn't been scanned before (no history in the vector
-// store), require human approval for the first scan. This prevents the
-// LLM from "discovering" new targets through creative reasoning.
+// Exploitation tools actively attempt to compromise systems. Approval
+// is scoped per-target -- approving exploitation of one target does not
+// authorize exploitation of others.
 // ---------------------------------------------------------------------------
 
 permit (
-    principal == NmapRecon::Agent::"nmap_recon",
-    action == NmapRecon::Action::"scan",
+    principal == PenTest::Phase::"exploit",
+    action == PenTest::Action::"execute_tool",
+    resource
+)
+when {
+    resource.tool_name in ["hydra_bruteforce", "metasploit_run", "sqlmap_exploit", "sqlmap_dump"] &&
+    context.has_human_approval == true &&
+    context.approval_age_minutes < 30 &&
+    context.approval_target == resource.cidr
+};
+
+// Block exploit tools without per-target approval
+forbid (
+    principal == PenTest::Phase::"exploit",
+    action == PenTest::Action::"execute_tool",
+    resource
+)
+when {
+    resource.tool_name in ["hydra_bruteforce", "metasploit_run", "sqlmap_exploit", "sqlmap_dump"] &&
+    (context.has_human_approval != true || context.approval_target != resource.cidr)
+};
+
+// ---------------------------------------------------------------------------
+// POST-EXPLOIT TOOLS -- APPROVAL + SCOPE REVALIDATION, 30-MINUTE EXPIRY
+//
+// Post-exploitation is the highest-risk category. Beyond human approval,
+// scope revalidation confirms that the target is still within the
+// authorized engagement scope after initial compromise. This catches
+// cases where lateral movement would reach out-of-scope systems.
+// ---------------------------------------------------------------------------
+
+permit (
+    principal == PenTest::Phase::"post_exploit",
+    action == PenTest::Action::"execute_tool",
+    resource
+)
+when {
+    resource.tool_name in ["impacket_exec", "pypykatz_dump", "chisel_tunnel", "ligolo_proxy"] &&
+    context.has_human_approval == true &&
+    context.approval_age_minutes < 30 &&
+    context.approval_target == resource.cidr &&
+    context.scope_revalidated == true
+};
+
+// Block post-exploit tools without approval + scope revalidation
+forbid (
+    principal == PenTest::Phase::"post_exploit",
+    action == PenTest::Action::"execute_tool",
+    resource
+)
+when {
+    resource.tool_name in ["impacket_exec", "pypykatz_dump", "chisel_tunnel", "ligolo_proxy"] &&
+    (context.has_human_approval != true || context.scope_revalidated != true || context.approval_target != resource.cidr)
+};
+
+// ---------------------------------------------------------------------------
+// FIRST-TIME TARGET -- APPROVAL REQUIRED
+//
+// If a target CIDR has not been scanned before in this engagement,
+// require human approval for the first interaction. This prevents the
+// LLM from "discovering" new targets through creative reasoning or
+// prompt injection and expanding scope without authorization.
+// ---------------------------------------------------------------------------
+
+permit (
+    principal,
+    action == PenTest::Action::"scan",
     resource
 )
 when {
@@ -86,11 +164,30 @@ when {
     context.has_human_approval == true
 };
 
-// Block first-scan without approval (this forbid fires before the
-// general permit in scan-authorization.cedar)
+permit (
+    principal,
+    action == PenTest::Action::"execute_tool",
+    resource
+)
+when {
+    resource.is_first_scan == true &&
+    context.has_human_approval == true
+};
+
+// Block first-time target without approval
 forbid (
-    principal == NmapRecon::Agent::"nmap_recon",
-    action == NmapRecon::Action::"scan",
+    principal,
+    action == PenTest::Action::"scan",
+    resource
+)
+when {
+    resource.is_first_scan == true &&
+    context.has_human_approval != true
+};
+
+forbid (
+    principal,
+    action == PenTest::Action::"execute_tool",
     resource
 )
 when {

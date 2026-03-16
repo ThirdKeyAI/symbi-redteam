@@ -15,7 +15,7 @@
 set -euo pipefail
 
 # --- Configuration ---
-SCAN_DIR="${SYMBI_SCAN_DIR:-/app/.symbiont/scans}"
+SCAN_DIR="/app/.symbiont/scans"
 MAX_RATE="${NMAP_MAX_RATE:-1000}"
 DEFAULT_TIMING="${NMAP_DEFAULT_TIMING:-T3}"
 
@@ -121,10 +121,12 @@ DURATION_MS=$(( (END_TIME - START_TIME) / 1000000 ))
 echo "SCAN_END scan_id=${SCAN_ID} exit_code=${EXIT_CODE} duration_ms=${DURATION_MS}" >&2
 
 # --- Return output file path to the runtime ---
+FULL_CMD="${NMAP_CMD} ${NMAP_ARGS[*]}"
+
 if [[ $EXIT_CODE -eq 0 ]] && [[ -f "$OUTPUT_FILE" ]]; then
-    echo "{\"status\": \"success\", \"output_file\": \"${OUTPUT_FILE}\", \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}}"
+    echo "{\"status\": \"success\", \"output_file\": \"${OUTPUT_FILE}\", \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"nmap_scan\", \"command\": \"${FULL_CMD}\"}"
     exit 0
 else
-    echo "{\"status\": \"error\", \"exit_code\": ${EXIT_CODE}, \"scan_id\": \"${SCAN_ID}\"}"
+    echo "{\"status\": \"error\", \"exit_code\": ${EXIT_CODE}, \"scan_id\": \"${SCAN_ID}\", \"tool\": \"nmap_scan\", \"command\": \"${FULL_CMD}\"}"
     exit 1
 fi

@@ -1,0 +1,46 @@
+# =============================================================================
+# scope.toml -- Engagement scope definition
+#
+# Loaded at engagement start and injected into Cedar policy evaluation
+# context as entity attributes. Changing this file requires re-hashing
+# and creates an audit trail entry.
+# =============================================================================
+
+[engagement]
+id = "eng-demo-001"
+client = "Acme Corp"
+start_time = "2026-03-16T08:00:00Z"
+end_time = "2026-03-20T18:00:00Z"
+
+[[targets]]
+cidr = "10.0.1.0/24"
+description = "Corporate network - staging"
+environment = "non-production"
+
+[[targets]]
+cidr = "10.0.2.0/24"
+description = "Corporate network - dev"
+environment = "non-production"
+
+[[targets]]
+cidr = "192.168.10.0/24"
+description = "Lab environment"
+environment = "non-production"
+
+[[targets]]
+cidr = "10.10.0.0/24"
+description = "External-facing DMZ"
+environment = "production"
+restrictions = ["recon_only", "no_exploitation"]
+
+[[excluded]]
+cidr = "10.0.0.1/32"
+reason = "Core router"
+
+[[excluded]]
+cidr = "10.0.0.2/32"
+reason = "DNS server"
+
+[[excluded]]
+cidr = "10.0.100.0/24"
+reason = "Finance VLAN - excluded per ROA"

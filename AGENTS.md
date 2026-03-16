@@ -1,54 +1,155 @@
-# AGENTS.md -- AI Agent Instructions for symbi-nmap-agent
+# AGENTS.md -- AI Agent Instructions for symbi-redteam
 
 ## Project Overview
 
-This repository demonstrates adding AI-governed intelligence to nmap using the Symbiont trust stack. The agent wraps nmap's scanning capabilities with ORGA loop governance, Cedar policy enforcement, and cryptographic audit trails.
+This repository is a governed autonomous penetration testing platform using the Symbiont trust stack. Seven hierarchical agents orchestrate a full PTES-methodology pen test with Cedar policy enforcement, risk-tiered tool authorization, and cryptographic audit trails.
 
 ## Architecture
 
-The system has four layers:
+The system has five layers:
 
-1. **nmap** (dumb tool): Executes network scans. Has no concept of authorization, proportionality, or audit.
-2. **Wrapper scripts** (`scripts/`): Sanitize arguments, capture output, enforce timeouts. Defense in depth.
-3. **MCP tools** (`src/tools.rs`): Define the interface between the LLM and nmap. Each tool call is intercepted by the ORGA Gate.
-4. **Symbiont runtime**: Runs the ORGA loop. The Gate phase evaluates Cedar policies in `policies/` before any tool executes.
+1. **Offensive toolchain** (Kali): nmap, nikto, nuclei, sqlmap, hydra, metasploit, impacket, pypykatz, chisel, ligolo, gobuster, enum4linux, smbclient, snmpwalk, amass, whatweb, whois, searchsploit. Dumb tools with no concept of governance.
+2. **Wrapper scripts** (`scripts/tool-wrappers/`): 19 sandboxed wrappers. Sanitize arguments, capture output, enforce timeouts, return structured JSON. Defense in depth.
+3. **MCP tools** (`src/*.rs`): 31 Rust-defined tools across 7 modules. Each tool call is intercepted by the ORGA Gate for Cedar policy evaluation.
+4. **Agent DSL** (`agents/`): 7 Symbiont DSL agents in a hierarchical tree. The engagement controller orchestrates 6 phase agents via `ask()`.
+5. **Symbiont runtime**: Runs ORGA loops, evaluates Cedar policies, manages inter-agent communication, maintains cryptographic audit trail.
+
+## Agent Hierarchy
+
+```
+engagement-controller.dsl
+├── ask(recon)          — Low risk, auto-allowed
+├── ask(enum)           — Medium risk, rate-limited
+├── ask(vuln-assess)    — Medium-high risk, non-prod only
+├── ask(exploit)        — High risk, human approval required
+├── ask(post-exploit)   — Highest risk, approval + scope revalidation
+└── ask(reporter)       — Report generation, always allowed
+```
 
 ## Key Files
 
 | File | Purpose | When to modify |
 |---|---|---|
-| `agents/nmap-recon.dsl` | Agent definition | Adding behaviors, changing capabilities, adjusting prompts |
-| `policies/scan-authorization.cedar` | Target and scan type rules | Adding/removing allowed CIDRs or scan types |
-| `policies/rate-limits.cedar` | Frequency limits | Adjusting scan rate limits |
-| `policies/escalation.cedar` | Human approval rules | Changing which scans need approval |
-| `src/tools.rs` | MCP tool definitions | Adding new tools or modifying tool schemas |
-| `scripts/nmap-wrapper.sh` | nmap execution | Changing scan flags or output handling |
-| `scripts/parse-nmap-xml.py` | Output parsing | Supporting new nmap output fields |
-| `Dockerfile` | Container image | Adding dependencies or changing base image |
-| `symbi.toml` | Runtime config | Tuning timeouts, models, or security settings |
+| `agents/engagement-controller.dsl` | Orchestrator agent | Changing phase ordering, adding new phases |
+| `agents/recon.dsl` | Reconnaissance | Adding recon tools, changing scan strategy |
+| `agents/enum.dsl` | Enumeration | Adding enum tools, changing enumeration targets |
+| `agents/vuln-assess.dsl` | Vulnerability assessment | Changing vuln scan templates or strategies |
+| `agents/exploit.dsl` | Exploitation | Changing exploit selection or approval workflow |
+| `agents/post-exploit.dsl` | Post-exploitation | Changing lateral movement strategies |
+| `agents/reporter.dsl` | Report generation | Changing report types or formats |
+| `policies/scope.cedar` | Target scope | Adding/removing allowed CIDRs |
+| `policies/tool-authorization.cedar` | Tool risk tiers | Changing which tools need which authorization |
+| `policies/phase-gates.cedar` | Phase transitions | Changing methodology requirements |
+| `policies/rate-limits.cedar` | Frequency limits | Adjusting per-target and global limits |
+| `policies/escalation.cedar` | Human approval | Changing approval expiry or requirements |
+| `policies/evidence.cedar` | Evidence rules | Changing evidence chain requirements |
+| `policies/time-bounds.cedar` | Engagement window | Changing time restrictions |
+| `src/recon_tools.rs` | 7 recon MCP tools | Adding recon tools or changing schemas |
+| `src/enum_tools.rs` | 5 enum MCP tools | Adding enum tools |
+| `src/vuln_tools.rs` | 4 vuln MCP tools | Adding vuln tools |
+| `src/exploit_tools.rs` | 4 exploit MCP tools | Adding exploit tools |
+| `src/postexploit_tools.rs` | 4 post-exploit MCP tools | Adding post-exploit tools |
+| `src/evidence_tools.rs` | 5 evidence MCP tools | Changing evidence storage |
+| `src/reporting.rs` | 4 reporting MCP tools | Changing report generation |
+| `src/db.rs` | Database layer | Schema changes, new queries |
+| `scope/scope.toml` | Engagement scope | Changing target definitions |
+| `db/schema.sql` | SQLite schema | Adding tables or indexes |
+| `templates/report-*.md` | Report templates | Changing report layout |
 
 ## Development Rules
 
-1. **Never bypass the Gate.** If a tool needs to execute without policy checks, use `.no_policy_gate()` in the tool registration and document why.
-2. **Capabilities are explicit.** If the agent needs a new capability, add it to both the DSL `capabilities` list and the relevant Cedar policies.
-3. **Defense in depth.** The wrapper script validates arguments even though Cedar already authorized the scan. Bugs happen.
-4. **Cedar policies are the source of truth.** The DSL `policy` blocks are hints; the `.cedar` files in `policies/` are what the runtime actually evaluates.
-5. **Test policy changes with `symbi policy evaluate`.** Don't deploy Cedar changes without running the policy simulator.
+1. **Never bypass the Gate.** If a tool needs to execute without policy checks, use `.no_policy_gate()` in tool registration and document why.
+2. **Capabilities are explicit.** If an agent needs a new capability, add it to the DSL `capabilities` list and the relevant Cedar policies.
+3. **Defense in depth.** Wrapper scripts validate arguments even though Cedar already authorized the operation.
+4. **Cedar policies are the source of truth.** DSL `policy` blocks are hints; the `.cedar` files in `policies/` are what the runtime evaluates.
+5. **Evidence chain integrity.** Every tool run must be recorded via `store_tool_run` before the next tool can execute.
+6. **Human approval is non-negotiable.** Exploit and post-exploit tools always require human approval. No exceptions, no overrides.
+7. **Test policy changes with `symbi policy evaluate`.** Never deploy Cedar changes without running the policy simulator.
 
 ## Common Tasks
 
 ### Add a new allowed scan target
-Edit `policies/scan-authorization.cedar` and add a `permit` rule for the new CIDR.
+Edit `scope/scope.toml` to add the target definition, then update `policies/scope.cedar` with a matching permit rule.
 
-### Add a new scan type
-1. Add the nmap flags to `scripts/nmap-wrapper.sh`
-2. Add Cedar policies governing when the type is allowed
-3. Update the DSL `scan_type_governance` policy block
-4. Test with `symbi policy evaluate`
+### Add a new tool to an existing phase
+1. Add a wrapper script in `scripts/tool-wrappers/`
+2. Define input/output structs in the appropriate `src/*_tools.rs`
+3. Implement the tool function
+4. Register in `register_tools()` with Cedar resource/action mappings
+5. Add the capability to the relevant agent DSL file
+6. Add Cedar policies in `policies/tool-authorization.cedar`
+7. Add a parser in `scripts/parse-outputs/` if the tool has complex output
 
-### Add a new tool
-1. Define input/output structs in `src/tools.rs`
-2. Implement the tool function
-3. Register it in `register_tools()` with appropriate Cedar resource/action mappings
-4. Add the capability to the DSL agent definition
-5. Write Cedar policies for the new tool
+### Add a new engagement phase
+1. Create a new agent DSL file in `agents/`
+2. Create a new `src/*_tools.rs` module
+3. Add phase-gate rules in `policies/phase-gates.cedar`
+4. Add tool authorization rules in `policies/tool-authorization.cedar`
+5. Update `engagement-controller.dsl` to orchestrate the new phase
+6. Update `symbi.toml` if the new phase needs different resource limits
+
+### Generate a retest comparison
+The reporter agent's `compare_engagements` tool takes a current and baseline engagement ID and produces a delta report showing remediated, persistent, regressed, and new findings.
+
+## Registered Tools (31 total)
+
+### Recon Tools (7)
+| Tool | Wrapper | Cedar Resource |
+|---|---|---|
+| `nmap_scan` | `nmap-wrapper.sh` | `PenTest::ScanTarget` |
+| `whois_lookup` | `whois-wrapper.sh` | `PenTest::ScanTarget` |
+| `dns_enumerate` | `dns-wrapper.sh` | `PenTest::ScanTarget` |
+| `whatweb_scan` | `whatweb-wrapper.sh` | `PenTest::ScanTarget` |
+| `amass_enum` | `amass-wrapper.sh` | `PenTest::ScanTarget` |
+| `parse_nmap_xml` | `parse-nmap-xml.py` | (no gate) |
+| `lookup_cve` | NVD API | `PenTest::CveQuery` |
+
+### Enum Tools (5)
+| Tool | Wrapper | Cedar Resource |
+|---|---|---|
+| `nikto_scan` | `nikto-wrapper.sh` | `PenTest::ScanTarget` |
+| `gobuster_scan` | `gobuster-wrapper.sh` | `PenTest::ScanTarget` |
+| `enum4linux_scan` | `enum4linux-wrapper.sh` | `PenTest::ScanTarget` |
+| `smbclient_access` | `smbclient-wrapper.sh` | `PenTest::ScanTarget` |
+| `snmpwalk_enum` | `snmpwalk-wrapper.sh` | `PenTest::ScanTarget` |
+
+### Vuln Tools (4)
+| Tool | Wrapper | Cedar Resource |
+|---|---|---|
+| `nmap_vuln_script` | `nmap-wrapper.sh` | `PenTest::ScanTarget` |
+| `nuclei_scan` | `nuclei-wrapper.sh` | `PenTest::ScanTarget` |
+| `sqlmap_detect` | `sqlmap-wrapper.sh` | `PenTest::ScanTarget` |
+| `searchsploit_query` | `searchsploit-wrapper.sh` | (no gate) |
+
+### Exploit Tools (4)
+| Tool | Wrapper | Cedar Resource |
+|---|---|---|
+| `hydra_bruteforce` | `hydra-wrapper.sh` | `PenTest::ScanTarget` |
+| `metasploit_run` | `msf-wrapper.sh` | `PenTest::ScanTarget` |
+| `sqlmap_exploit` | `sqlmap-wrapper.sh` | `PenTest::ScanTarget` |
+| `sqlmap_dump` | `sqlmap-wrapper.sh` | `PenTest::ScanTarget` |
+
+### Post-Exploit Tools (4)
+| Tool | Wrapper | Cedar Resource |
+|---|---|---|
+| `impacket_exec` | `impacket-wrapper.sh` | `PenTest::ScanTarget` |
+| `pypykatz_dump` | `pypykatz-wrapper.sh` | `PenTest::ScanTarget` |
+| `chisel_tunnel` | `chisel-wrapper.sh` | `PenTest::ScanTarget` |
+| `ligolo_proxy` | `ligolo-wrapper.sh` | `PenTest::ScanTarget` |
+
+### Evidence Tools (5)
+| Tool | Cedar Resource |
+|---|---|
+| `store_finding` | `PenTest::EvidenceStore` |
+| `query_findings` | `PenTest::EvidenceStore` |
+| `search_similar_findings` | `PenTest::EvidenceStore` |
+| `store_tool_run` | `PenTest::EvidenceStore` |
+| `capture_evidence` | `PenTest::EvidenceStore` |
+
+### Reporting Tools (4)
+| Tool | Cedar Resource |
+|---|---|
+| `generate_report` | `PenTest::ReportGenerator` |
+| `compare_engagements` | `PenTest::ReportGenerator` |
+| `create_engagement` | `PenTest::EvidenceStore` |
+| `manage_engagement` | `PenTest::EvidenceStore` |
