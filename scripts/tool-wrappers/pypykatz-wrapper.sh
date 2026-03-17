@@ -17,6 +17,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 # --- Configuration ---
 SCAN_DIR="/app/.symbiont/scans"
@@ -36,13 +37,13 @@ mkdir -p "$SCAN_DIR"
 # --- Argument sanitization (defense in depth) ---
 
 # Block shell injection attempts in source path
-if [[ "$SOURCE" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$SOURCE" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in source: ${SOURCE}" >&2
     exit 2
 fi
 
 # Block shell injection in target
-if [[ "$TARGET" != "none" ]] && [[ "$TARGET" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$TARGET" != "none" ]] && [[ "$TARGET" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in target: ${TARGET}" >&2
     exit 2
 fi

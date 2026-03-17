@@ -20,6 +20,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 # --- Configuration ---
 SCAN_DIR="/app/.symbiont/scans"
@@ -42,19 +43,19 @@ mkdir -p "$SCAN_DIR" "$LOG_DIR"
 # --- Argument sanitization (defense in depth) ---
 
 # Block shell injection in listen address
-if [[ "$LISTEN_ADDR" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$LISTEN_ADDR" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in listen_addr: ${LISTEN_ADDR}" >&2
     exit 2
 fi
 
 # Block shell injection in remote address
-if [[ "$REMOTE" != "none" ]] && [[ "$REMOTE" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$REMOTE" != "none" ]] && [[ "$REMOTE" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in remote: ${REMOTE}" >&2
     exit 2
 fi
 
 # Block shell injection in tunnel spec
-if [[ "$TUNNEL_SPEC" != "none" ]] && [[ "$TUNNEL_SPEC" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$TUNNEL_SPEC" != "none" ]] && [[ "$TUNNEL_SPEC" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in tunnel_spec: ${TUNNEL_SPEC}" >&2
     exit 2
 fi

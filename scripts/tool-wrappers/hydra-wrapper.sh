@@ -17,6 +17,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 # --- Configuration ---
 SCAN_DIR="/app/.symbiont/scans"
@@ -43,7 +44,7 @@ mkdir -p "$SCAN_DIR"
 # Block shell injection attempts in all arguments
 for argname in TARGET SERVICE PORT USERNAME_FILE PASSWORD_FILE USERNAME PASSWORD THREADS TIMEOUT; do
     argval="${!argname}"
-    if [[ "$argval" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+    if [[ "$argval" =~ $INJECTION_RE ]]; then
         echo "ERROR: Invalid characters in ${argname}: ${argval}" >&2
         exit 2
     fi

@@ -12,6 +12,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 ENGAGEMENT_ID="${1:?ERROR: Engagement ID required}"
 SOURCE_PATH="${2:?ERROR: Source file path required}"
@@ -21,7 +22,7 @@ EVIDENCE_BASE="/app/.symbiont/evidence"
 EVIDENCE_DIR="${EVIDENCE_BASE}/${ENGAGEMENT_ID}"
 
 # --- Argument validation ---
-if [[ "$ENGAGEMENT_ID" =~ [;\|\&\$\`\(\)] ]]; then
+if [[ "$ENGAGEMENT_ID" =~ $INJECTION_RE ]]; then
     echo '{"status": "error", "message": "Invalid engagement ID"}' >&2
     exit 2
 fi

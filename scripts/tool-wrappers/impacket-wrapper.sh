@@ -17,6 +17,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 # --- Configuration ---
 SCAN_DIR="/app/.symbiont/scans"
@@ -39,19 +40,19 @@ mkdir -p "$SCAN_DIR"
 # --- Argument sanitization (defense in depth) ---
 
 # Block shell injection attempts in target
-if [[ "$TARGET" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$TARGET" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in target: ${TARGET}" >&2
     exit 2
 fi
 
 # Block shell injection in username
-if [[ "$USERNAME" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$USERNAME" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in username: ${USERNAME}" >&2
     exit 2
 fi
 
 # Block shell injection in domain
-if [[ "$DOMAIN" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$DOMAIN" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in domain: ${DOMAIN}" >&2
     exit 2
 fi

@@ -13,6 +13,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 # --- Configuration ---
 SCAN_DIR="/app/.symbiont/scans"
@@ -30,7 +31,7 @@ mkdir -p "$SCAN_DIR"
 
 # --- Argument sanitization (defense in depth) ---
 # Block shell injection attempts in target
-if [[ "$TARGET" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$TARGET" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in target: ${TARGET}" >&2
     exit 2
 fi
@@ -42,7 +43,7 @@ if ! [[ "$TARGET" =~ ^[a-zA-Z0-9._:-]+$ ]]; then
 fi
 
 # Block shell injection in options (only allow dashes, letters, digits, spaces)
-if [[ "$OPTIONS" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$OPTIONS" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in options: ${OPTIONS}" >&2
     exit 2
 fi

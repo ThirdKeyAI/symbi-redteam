@@ -13,6 +13,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 # --- Configuration ---
 SCAN_DIR="/app/.symbiont/scans"
@@ -32,7 +33,7 @@ mkdir -p "$SCAN_DIR"
 
 # --- Argument sanitization (defense in depth) ---
 # Block shell injection attempts in target
-if [[ "$TARGET" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$TARGET" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in target: ${TARGET}" >&2
     exit 2
 fi
@@ -44,19 +45,19 @@ if ! [[ "$TARGET" =~ ^[a-zA-Z0-9._:-]+$ ]]; then
 fi
 
 # Block shell injection in share name
-if [[ -n "$SHARE" ]] && [[ "$SHARE" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ -n "$SHARE" ]] && [[ "$SHARE" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in share name: ${SHARE}" >&2
     exit 2
 fi
 
 # Block shell injection in username
-if [[ -n "$USERNAME" ]] && [[ "$USERNAME" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ -n "$USERNAME" ]] && [[ "$USERNAME" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in username: ${USERNAME}" >&2
     exit 2
 fi
 
 # Block shell injection in password
-if [[ -n "$PASSWORD" ]] && [[ "$PASSWORD" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ -n "$PASSWORD" ]] && [[ "$PASSWORD" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in password: ${PASSWORD}" >&2
     exit 2
 fi

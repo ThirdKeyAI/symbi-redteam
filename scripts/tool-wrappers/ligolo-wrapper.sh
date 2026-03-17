@@ -21,6 +21,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 # --- Configuration ---
 SCAN_DIR="/app/.symbiont/scans"
@@ -43,19 +44,19 @@ mkdir -p "$SCAN_DIR" "$LOG_DIR"
 # --- Argument sanitization (defense in depth) ---
 
 # Block shell injection in listen address
-if [[ "$LISTEN_ADDR" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$LISTEN_ADDR" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in listen_addr: ${LISTEN_ADDR}" >&2
     exit 2
 fi
 
 # Block shell injection in connect address
-if [[ "$CONNECT_ADDR" != "none" ]] && [[ "$CONNECT_ADDR" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$CONNECT_ADDR" != "none" ]] && [[ "$CONNECT_ADDR" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in connect_addr: ${CONNECT_ADDR}" >&2
     exit 2
 fi
 
 # Block shell injection in interface name
-if [[ "$INTERFACE" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$INTERFACE" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in interface: ${INTERFACE}" >&2
     exit 2
 fi

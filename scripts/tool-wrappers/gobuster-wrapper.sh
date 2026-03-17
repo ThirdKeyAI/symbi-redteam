@@ -13,6 +13,7 @@
 # =============================================================================
 
 set -euo pipefail
+INJECTION_RE='[;&|$`(){}]'
 
 # --- Configuration ---
 SCAN_DIR="/app/.symbiont/scans"
@@ -32,7 +33,7 @@ mkdir -p "$SCAN_DIR"
 
 # --- Argument sanitization (defense in depth) ---
 # Block shell injection attempts in target
-if [[ "$TARGET" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$TARGET" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in target: ${TARGET}" >&2
     exit 2
 fi
@@ -51,7 +52,7 @@ if ! echo "$VALID_MODES" | grep -qw "$MODE"; then
 fi
 
 # Validate wordlist path (no shell metacharacters, must be absolute path)
-if [[ "$WORDLIST" =~ [;\|\&\$\`\(\)\{\}] ]]; then
+if [[ "$WORDLIST" =~ $INJECTION_RE ]]; then
     echo "ERROR: Invalid characters in wordlist path: ${WORDLIST}" >&2
     exit 2
 fi
