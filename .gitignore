@@ -24,6 +24,15 @@ Thumbs.db
 .env
 .env.local
 
+# Python bytecode
+__pycache__/
+*.pyc
+
+# Docker volumes (persisted outside repo)
+data/
+evidence/
+reports/
+
 # Superpowers working files
 docs/superpowers/
 docs/plans/
