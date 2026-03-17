@@ -87,22 +87,104 @@ Seven policy files enforce governance at every level:
 
 ## Quick Start
 
+### Prerequisites
+
+- Docker with compose v2
+- A local clone of the [Symbiont](https://github.com/ThirdKeyAI/symbiont) runtime repo (for building from source)
+- An Anthropic API key
+
+### Build
+
+The Docker image builds the Symbiont runtime from local source. Copy or rsync the symbiont repo into the build context (excluding `target/` and `.git/` to keep it small):
+
 ```bash
+# Copy symbiont source (exclude build artifacts)
+rsync -a --exclude='target/' --exclude='.git/' ../symbiont/ symbiont/
+
 # Set your API key
 export ANTHROPIC_API_KEY=your-key
 
-# Build the container
+# Build the container (first build takes ~15 min for Rust compilation)
 docker compose build
-
-# Start the governed pen test platform
-docker compose up
-
-# The engagement controller will:
-# 1. Initialize the engagement
-# 2. Run recon → enum → vuln → exploit → post-exploit → report
-# 3. Generate executive, technical, and remediation reports
-# 4. All in markdown, HTML, and PDF formats
 ```
+
+### Run
+
+```bash
+# Generate a master key for encryption
+export SYMBIONT_MASTER_KEY=$(openssl rand -hex 32)
+
+# Start the runtime
+docker run --rm --network host --privileged \
+  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+  -e SYMBIONT_API_TOKEN="your-api-token" \
+  -e SYMBIONT_MASTER_KEY="$SYMBIONT_MASTER_KEY" \
+  -v ./policies:/app/policies:ro \
+  -v ./scope:/app/scope:ro \
+  -v ./agents:/app/agents:ro \
+  -v ./scripts:/app/scripts \
+  -v ./templates:/app/templates:ro \
+  symbi-redteam:latest \
+  up -p 9080 --http-port 9081 --http.token "your-webhook-token"
+```
+
+### Interact via API
+
+```bash
+# Health check
+curl -s http://localhost:9080/api/v1/health
+
+# List loaded agents (7 agents from agents/ directory)
+curl -s -H "Authorization: Bearer your-api-token" \
+  http://localhost:9080/api/v1/agents
+
+# Execute an agent
+curl -s -X POST -H "Authorization: Bearer your-api-token" \
+  -H "Content-Type: application/json" \
+  http://localhost:9080/api/v1/agents/{agent-id}/execute \
+  -d '{"input": "Scan 10.0.1.0/24 for open services"}'
+
+# Swagger API docs
+open http://localhost:9080/swagger-ui/
+```
+
+### Test individual tools
+
+Tool wrappers can be tested directly inside the container without the full runtime:
+
+```bash
+docker run --rm --network host --privileged --user root \
+  --entrypoint bash symbi-redteam:latest -c \
+  '/app/scripts/tool-wrappers/nmap-wrapper.sh 10.0.1.5 service "" test-001'
+```
+
+### Configure scope
+
+Edit `scope/scope.toml` to define your engagement targets and update `policies/scope.cedar` to match. The scope is baked into Cedar policies for this demo.
+
+### Environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | Yes | API key for LLM reasoning |
+| `SYMBIONT_API_TOKEN` | Yes | Bearer token for the runtime REST API (port 9080) |
+| `SYMBIONT_MASTER_KEY` | Yes | 256-bit hex key for encryption (`openssl rand -hex 32`) |
+| `SYMBI_LOG_LEVEL` | No | Log level: debug, info, warn, error (default: info) |
+
+### Ports
+
+| Port | Purpose | Authentication |
+|------|---------|----------------|
+| 9080 | Runtime REST API (agents, status, execute) | `SYMBIONT_API_TOKEN` via Bearer header |
+| 9081 | HTTP Input webhook (agent invocation) | `--http.token` via Bearer header |
+
+### Known limitations
+
+- **Gobuster** requires `--exclude-length` for SPA targets (like Juice Shop) that return 200 for all paths. The agent's reasoning phase handles this automatically.
+- **Nuclei** downloads templates on first run inside the container. Templates are pre-downloaded during Docker build, but template updates require a rebuild.
+- **Metasploit** first-run initialization takes 30-60 seconds while the framework loads.
+- **Non-root execution**: The container runs as the `symbi` user by default. Tools requiring raw sockets (nmap SYN scans, chisel tunneling) need `--cap-add NET_RAW --cap-add NET_ADMIN` or `--privileged` for testing.
+- **MCP tool registration**: The Rust MCP tool definitions in `src/` define the tool interfaces. Full LLM-driven tool execution requires registering these tools with the Symbiont runtime's MCP server. Currently, the DSL agents define the orchestration logic while the tool wrappers handle direct execution.
 
 ## Repository Structure
 
