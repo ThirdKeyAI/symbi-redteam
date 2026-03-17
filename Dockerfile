@@ -16,15 +16,31 @@
 # Cedar policy-gated and cryptographically audited.
 # =============================================================================
 
-# --- Stage 1: Build the symbi runtime ---
-FROM rust:1.82-bookworm AS builder
+# --- Stage 1: Build the symbi runtime from local source ---
+#
+# Before building, copy or symlink the symbiont repo into this directory:
+#   ln -sf ../symbiont symbiont
+#   docker compose build
+#
+FROM rust:latest AS builder
 
 WORKDIR /build
 
-# Install symbi with required features
-RUN cargo install symbi \
-    --features "cedar,vector-lancedb,cloud-llm,embedding-models" \
-    --locked
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    protobuf-compiler libprotobuf-dev cmake pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the full symbiont source tree (symlinked or copied into build context)
+COPY symbiont/ ./symbiont/
+
+# Build symbi from local source with required features
+# The symbi-runtime dep already includes cloud-llm, vector-lancedb, http-input, http-api.
+# We add cedar to the runtime features via cargo's package feature syntax,
+# and enable native-sandbox + interactive at the top level.
+RUN cd symbiont && cargo build -j2 --release \
+    --features "native-sandbox,interactive,symbi-runtime/cedar" \
+    && cp target/release/symbi /usr/local/bin/symbi
 
 # --- Stage 2: Runtime image with Kali toolchain ---
 FROM kalilinux/kali-rolling
@@ -41,7 +57,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     whatweb \
     amass \
     # --- Enumeration tools ---
-    nikto \
+    perl \
     gobuster \
     enum4linux \
     smbclient \
@@ -60,7 +76,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ligolo-ng \
     # --- Reporting ---
     pandoc \
-    wkhtmltopdf \
+    weasyprint \
     # --- Support ---
     python3 \
     python3-lxml \
@@ -69,10 +85,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     curl \
     procps \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    # nikto: Kali package is broken (missing nikto.pl), install from source
+    # nikto: Kali package is broken (missing nikto.pl), install from source
+    && git clone --depth 1 https://github.com/sullo/nikto.git /opt/nikto \
+    && ln -sf /opt/nikto/program/nikto.pl /usr/local/bin/nikto \
+    # nikto perl dependencies (not pulled by --no-install-recommends)
+    && apt-get update && apt-get install -y --no-install-recommends \
+        libxml-writer-perl libio-socket-ssl-perl libnet-ssleay-perl \
+        libjson-pp-perl libwhisker2-perl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy symbi binary from builder
-COPY --from=builder /usr/local/cargo/bin/symbi /usr/local/bin/symbi
+COPY --from=builder /usr/local/bin/symbi /usr/local/bin/symbi
 
 # Create non-root user for the runtime
 RUN groupadd -r symbi && useradd -r -g symbi -d /app -s /bin/bash symbi

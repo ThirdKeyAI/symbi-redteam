@@ -141,7 +141,7 @@ pub fn generate_report(input: GenerateReportInput) -> Result<GenerateReportOutpu
                 .args([
                     &md_path,
                     "-f", "markdown",
-                    "--pdf-engine=wkhtmltopdf",
+                    "--pdf-engine=weasyprint",
                     "--metadata", &format!("title=Penetration Test Report - {}", engagement.client),
                     "-o", &pdf_path,
                 ])
@@ -586,7 +586,7 @@ pub fn compare_engagements(input: CompareEngagementsInput) -> Result<CompareEnga
         "pdf" => {
             let pdf_path = format!("{}/{}.pdf", reports_dir, base_name);
             let _ = Command::new("pandoc")
-                .args([&md_path, "-f", "markdown", "--pdf-engine=wkhtmltopdf", "-o", &pdf_path])
+                .args([&md_path, "-f", "markdown", "--pdf-engine=weasyprint", "-o", &pdf_path])
                 .output();
             pdf_path
         }
