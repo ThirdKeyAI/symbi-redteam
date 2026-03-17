@@ -1,16 +1,16 @@
-# =============================================================================
-# recon.dsl -- Reconnaissance phase agent
-#
-# Performs network reconnaissance using nmap, whois, dig, whatweb, and amass.
-# Uses parallel() for concurrent tool execution within the phase.
-# All results are stored in the evidence database via store_finding/store_tool_run.
-#
-# ORGA flow:
-#   OBSERVE: Parse targets from engagement controller, load scan history
-#   REASON:  Plan reconnaissance strategy based on target types
-#   GATE:    Cedar evaluates scope, rate limits, first-scan approval
-#   ACT:     Execute recon tools in parallel, store findings
-# =============================================================================
+// =============================================================================
+// recon.dsl -- Reconnaissance phase agent
+//
+// Performs network reconnaissance using nmap, whois, dig, whatweb, and amass.
+// Uses parallel() for concurrent tool execution within the phase.
+// All results are stored in the evidence database via store_finding/store_tool_run.
+//
+// ORGA flow:
+//   OBSERVE: Parse targets from engagement controller, load scan history
+//   REASON:  Plan reconnaissance strategy based on target types
+//   GATE:    Cedar evaluates scope, rate limits, first-scan approval
+//   ACT:     Execute recon tools in parallel, store findings
+// =============================================================================
 
 metadata {
     version = "1.0.0"
@@ -64,7 +64,7 @@ agent recon(input: ReconRequest) -> ReconResult {
 
         let scan_history = recall("scans", "recon " + targets[0], limit: 5)
 
-        # Plan the reconnaissance strategy
+        // Plan the reconnaissance strategy
         let recon_plan = reason("""
             You are a network reconnaissance specialist. Given the following targets,
             plan a comprehensive but non-intrusive reconnaissance strategy.
@@ -87,8 +87,8 @@ agent recon(input: ReconRequest) -> ReconResult {
             Output a structured plan with specific tool invocations.
         """)
 
-        # Execute reconnaissance tools
-        # Phase 1: Network discovery with nmap (must run first to discover hosts)
+        // Execute reconnaissance tools
+        // Phase 1: Network discovery with nmap (must run first to discover hosts)
         let discovered_hosts = []
         let discovered_services = []
         let findings_count = 0
@@ -120,7 +120,7 @@ agent recon(input: ReconRequest) -> ReconResult {
                 description: "nmap service scan of " + target
             )
 
-            # Process discovered hosts and services
+            // Process discovered hosts and services
             for host in parsed.hosts {
                 discovered_hosts = discovered_hosts + [host.ip]
 
@@ -147,7 +147,7 @@ agent recon(input: ReconRequest) -> ReconResult {
                         )
                         findings_count = findings_count + 1
 
-                        # CVE lookup for identified services
+                        // CVE lookup for identified services
                         if port.version != "" {
                             let cves = lookup_cve(
                                 service: port.service,
@@ -178,7 +178,7 @@ agent recon(input: ReconRequest) -> ReconResult {
             }
         }
 
-        # Phase 2: Parallel enrichment (whois, DNS, whatweb, amass)
+        // Phase 2: Parallel enrichment (whois, DNS, whatweb, amass)
         let web_targets = []
         for svc in discovered_services {
             if svc.service in ["http", "https", "http-alt"] {
@@ -187,7 +187,7 @@ agent recon(input: ReconRequest) -> ReconResult {
             }
         }
 
-        # Whois for discovered hosts
+        // Whois for discovered hosts
         for host_ip in discovered_hosts {
             let whois_result = whois_lookup(target: host_ip)
             store_tool_run(
@@ -202,7 +202,7 @@ agent recon(input: ReconRequest) -> ReconResult {
             )
         }
 
-        # DNS enumeration for targets that look like domains
+        // DNS enumeration for targets that look like domains
         for target in targets {
             let dns_result = dns_enumerate(target: target, record_type: "ANY")
             store_tool_run(
@@ -217,7 +217,7 @@ agent recon(input: ReconRequest) -> ReconResult {
             )
         }
 
-        # WhatWeb for discovered web services
+        // WhatWeb for discovered web services
         for web_target in web_targets {
             let whatweb_result = whatweb_scan(target: web_target, aggression_level: 1)
             store_tool_run(
@@ -238,7 +238,7 @@ agent recon(input: ReconRequest) -> ReconResult {
             )
         }
 
-        # Amass subdomain enumeration (passive only for safety)
+        // Amass subdomain enumeration (passive only for safety)
         for target in targets {
             let amass_result = amass_enum(target: target, passive_only: true)
             store_tool_run(
@@ -253,7 +253,7 @@ agent recon(input: ReconRequest) -> ReconResult {
             )
         }
 
-        # Store results for future context
+        // Store results for future context
         store("scans", {
             engagement_id: engagement_id,
             phase: "recon",
@@ -275,12 +275,12 @@ agent recon(input: ReconRequest) -> ReconResult {
     }
 }
 
-# ---------------------------------------------------------------------------
-# Type definitions
-# ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Type definitions
+// ---------------------------------------------------------------------------
 
 type ReconRequest {
-    message: string     # JSON-encoded request from engagement controller
+    message: string     // JSON-encoded request from engagement controller
 }
 
 type ReconResult {

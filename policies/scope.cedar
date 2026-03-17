@@ -223,13 +223,36 @@ when {
     resource.cidr like "172.16.*"
 };
 
+// 172.17.0.2 is an in-scope Docker test target -- permit before the range deny
+permit (
+    principal,
+    action == PenTest::Action::"scan",
+    resource
+)
+when {
+    resource.cidr == "172.17.0.2" &&
+    resource.environment == "non-production"
+};
+
+permit (
+    principal,
+    action == PenTest::Action::"execute_tool",
+    resource
+)
+when {
+    resource.cidr == "172.17.0.2" &&
+    resource.environment == "non-production"
+};
+
+// Block rest of 172.17.* (Docker bridge range, not ours)
 forbid (
     principal,
     action,
     resource
 )
 when {
-    resource.cidr like "172.17.*"
+    resource.cidr like "172.17.*" &&
+    resource.cidr != "172.17.0.2"
 };
 
 forbid (

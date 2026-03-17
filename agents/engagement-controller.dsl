@@ -1,18 +1,18 @@
-# =============================================================================
-# engagement-controller.dsl -- Top-level penetration test orchestrator
-#
-# This agent orchestrates a full PTES-methodology pen test by delegating
-# to specialist phase agents via Symbiont's inter-agent communication bus.
-# It maintains engagement state, enforces phase ordering, and decides
-# transitions based on cumulative findings.
-#
-# ORGA flow:
-#   OBSERVE: Load engagement state, check phase completion status
-#   REASON:  Decide next phase based on findings and methodology
-#   GATE:    Cedar evaluates phase transition policies
-#   ACT:     Delegate to phase agent via ask(), collect results
-#   (loop for each phase: recon → enum → vuln → exploit → post-exploit → report)
-# =============================================================================
+// =============================================================================
+// engagement-controller.dsl -- Top-level penetration test orchestrator
+//
+// This agent orchestrates a full PTES-methodology pen test by delegating
+// to specialist phase agents via Symbiont's inter-agent communication bus.
+// It maintains engagement state, enforces phase ordering, and decides
+// transitions based on cumulative findings.
+//
+// ORGA flow:
+//   OBSERVE: Load engagement state, check phase completion status
+//   REASON:  Decide next phase based on findings and methodology
+//   GATE:    Cedar evaluates phase transition policies
+//   ACT:     Delegate to phase agent via ask(), collect results
+//   (loop for each phase: recon → enum → vuln → exploit → post-exploit → report)
+// =============================================================================
 
 metadata {
     version = "1.0.0"
@@ -25,16 +25,16 @@ metadata {
 agent engagement_controller(input: EngagementRequest) -> EngagementReport {
 
     capabilities = [
-        "agent.ask",               # Synchronous inter-agent communication
-        "agent.parallel",          # Concurrent agent calls
-        "agent.spawn",             # Spawn phase agents
-        "tool.create_engagement",  # Initialize engagement record
-        "tool.manage_engagement",  # Update engagement status
-        "tool.query_findings",     # Query evidence database
-        "tool.generate_report",    # Generate final reports
-        "tool.compare_engagements", # Retest comparison
-        "memory.read",             # Read engagement state
-        "memory.write",            # Persist engagement state
+        "agent.ask",               // Synchronous inter-agent communication
+        "agent.parallel",          // Concurrent agent calls
+        "agent.spawn",             // Spawn phase agents
+        "tool.create_engagement",  // Initialize engagement record
+        "tool.manage_engagement",  // Update engagement status
+        "tool.query_findings",     // Query evidence database
+        "tool.generate_report",    // Generate final reports
+        "tool.compare_engagements", // Retest comparison
+        "memory.read",             // Read engagement state
+        "memory.write",            // Persist engagement state
     ]
 
     resources {
@@ -68,7 +68,7 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
 
     with memory = "persistent", timeout = 0 {
 
-        # Phase 1: Initialize engagement
+        // Phase 1: Initialize engagement
         let engagement = create_engagement(
             client: input.client,
             start_date: input.start_date,
@@ -86,7 +86,7 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
 
         log("INFO", "Engagement initialized: " + engagement.engagement_id)
 
-        # Phase 2: Reconnaissance
+        // Phase 2: Reconnaissance
         log("INFO", "Starting reconnaissance phase")
         store("engagement", { current_phase: "recon" })
 
@@ -108,8 +108,8 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
 
         log("INFO", "Recon complete: " + recon_data.findings_count + " findings")
 
-        # Phase 3: Enumeration
-        # Gate: requires at least 1 recon finding (enforced by phase-gates.cedar)
+        // Phase 3: Enumeration
+        // Gate: requires at least 1 recon finding (enforced by phase-gates.cedar)
         if recon_data.findings_count > 0 {
             log("INFO", "Starting enumeration phase")
             store("engagement", { current_phase: "enum" })
@@ -135,7 +135,7 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
 
             log("INFO", "Enumeration complete: " + enum_data.findings_count + " findings")
 
-            # Phase 4: Vulnerability Assessment
+            // Phase 4: Vulnerability Assessment
             log("INFO", "Starting vulnerability assessment phase")
             store("engagement", { current_phase: "vuln" })
 
@@ -161,8 +161,8 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
 
             log("INFO", "Vuln assessment complete: " + vuln_data.findings_count + " findings")
 
-            # Phase 5: Exploitation (human-gated)
-            # Gate: requires vuln findings reviewed by human (escalation.cedar)
+            // Phase 5: Exploitation (human-gated)
+            // Gate: requires vuln findings reviewed by human (escalation.cedar)
             if vuln_data.exploitable_count > 0 {
                 log("INFO", "Starting exploitation phase (requires human approval per target)")
                 store("engagement", { current_phase: "exploit" })
@@ -190,7 +190,7 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
 
                 log("INFO", "Exploitation complete: " + exploit_data.success_count + " successful exploits")
 
-                # Phase 6: Post-Exploitation (human-gated + scope revalidation)
+                // Phase 6: Post-Exploitation (human-gated + scope revalidation)
                 if exploit_data.success_count > 0 {
                     log("INFO", "Starting post-exploitation phase (requires human approval + scope revalidation)")
                     store("engagement", { current_phase: "post_exploit" })
@@ -220,7 +220,7 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
             }
         }
 
-        # Phase 7: Report Generation
+        // Phase 7: Report Generation
         log("INFO", "Starting report generation phase")
         store("engagement", { current_phase: "reporting" })
 
@@ -234,7 +234,7 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
         let report_result = ask("reporter", report_message)
         let report_data = parse_json(report_result)
 
-        # Finalize engagement
+        // Finalize engagement
         manage_engagement(
             engagement_id: engagement.engagement_id,
             status: "complete"
@@ -260,9 +260,9 @@ agent engagement_controller(input: EngagementRequest) -> EngagementReport {
     }
 }
 
-# ---------------------------------------------------------------------------
-# Type definitions
-# ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Type definitions
+// ---------------------------------------------------------------------------
 
 type EngagementRequest {
     client: string
@@ -270,7 +270,7 @@ type EngagementRequest {
     end_date: string
     targets: list<string>
     scope_description: string
-    baseline_engagement_id: string    # For retest comparison (empty if first engagement)
+    baseline_engagement_id: string    // For retest comparison (empty if first engagement)
 }
 
 type EngagementReport {

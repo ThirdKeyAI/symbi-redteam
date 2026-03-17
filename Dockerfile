@@ -86,8 +86,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     procps \
     git \
+    # --- Wordlists for gobuster/hydra ---
+    wordlists \
+    seclists \
     && rm -rf /var/lib/apt/lists/* \
-    # nikto: Kali package is broken (missing nikto.pl), install from source
     # nikto: Kali package is broken (missing nikto.pl), install from source
     && git clone --depth 1 https://github.com/sullo/nikto.git /opt/nikto \
     && ln -sf /opt/nikto/program/nikto.pl /usr/local/bin/nikto \
@@ -131,6 +133,9 @@ RUN mkdir -p \
 
 # Drop to non-root (tool capabilities handled at container level)
 USER symbi
+
+# Pre-download nuclei templates so first run doesn't hang
+RUN nuclei -update-templates 2>/dev/null || true
 
 # Health check: verify symbi and key tools are functional
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \

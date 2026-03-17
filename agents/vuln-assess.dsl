@@ -1,9 +1,9 @@
-# =============================================================================
-# vuln-assess.dsl -- Vulnerability assessment phase agent
-#
-# Performs vulnerability scanning using nmap NSE scripts, nuclei templates,
-# sqlmap detection, and searchsploit queries. Non-production targets only.
-# =============================================================================
+// =============================================================================
+// vuln-assess.dsl -- Vulnerability assessment phase agent
+//
+// Performs vulnerability scanning using nmap NSE scripts, nuclei templates,
+// sqlmap detection, and searchsploit queries. Non-production targets only.
+// =============================================================================
 
 metadata {
     version = "1.0.0"
@@ -77,7 +77,7 @@ agent vuln_assess(input: VulnRequest) -> VulnResult {
             and services with known CVEs from the recon phase.
         """)
 
-        # NSE vulnerability scripts against discovered hosts
+        // NSE vulnerability scripts against discovered hosts
         for target in targets {
             let nmap_vuln = nmap_vuln_script(
                 target: target,
@@ -129,7 +129,7 @@ agent vuln_assess(input: VulnRequest) -> VulnResult {
             }
         }
 
-        # Nuclei template scanning against web applications
+        // Nuclei template scanning against web applications
         for web_app in web_apps {
             let nuclei_result = nuclei_scan(
                 target: web_app,
@@ -177,7 +177,7 @@ agent vuln_assess(input: VulnRequest) -> VulnResult {
             }
         }
 
-        # SQLMap detection against web application parameters
+        // SQLMap detection against web application parameters
         for web_app in web_apps {
             let sqlmap_result = sqlmap_detect(
                 target_url: web_app,
@@ -217,7 +217,7 @@ agent vuln_assess(input: VulnRequest) -> VulnResult {
             }
         }
 
-        # Searchsploit for discovered service versions
+        // Searchsploit for discovered service versions
         for svc in services {
             if svc.version != "" {
                 let search_query = svc.service + " " + svc.version

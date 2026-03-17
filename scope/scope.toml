@@ -33,6 +33,11 @@ description = "External-facing DMZ"
 environment = "production"
 restrictions = ["recon_only", "no_exploitation"]
 
+[[targets]]
+cidr = "172.17.0.2/32"
+description = "Docker test target"
+environment = "non-production"
+
 [[excluded]]
 cidr = "10.0.0.1/32"
 reason = "Core router"

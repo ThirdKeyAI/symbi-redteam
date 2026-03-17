@@ -22,7 +22,7 @@ TIMEOUT_SECONDS=600
 # --- Parse arguments ---
 TARGET="${1:?ERROR: Target URL required}"
 MODE="${2:-dir}"
-WORDLIST="${3:-/usr/share/wordlists/dirb/common.txt}"
+WORDLIST="${3:-/usr/share/seclists/Discovery/Web-Content/common.txt}"
 EXTENSIONS="${4:-php,html,txt}"
 SCAN_ID="${5:-gobuster-$(date +%s)-$$}"
 

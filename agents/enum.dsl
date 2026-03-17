@@ -1,9 +1,9 @@
-# =============================================================================
-# enum.dsl -- Enumeration phase agent
-#
-# Performs service enumeration using nikto, gobuster, enum4linux, smbclient,
-# and snmpwalk. Targets are derived from recon phase findings.
-# =============================================================================
+// =============================================================================
+// enum.dsl -- Enumeration phase agent
+//
+// Performs service enumeration using nikto, gobuster, enum4linux, smbclient,
+// and snmpwalk. Targets are derived from recon phase findings.
+// =============================================================================
 
 metadata {
     version = "1.0.0"
@@ -77,13 +77,13 @@ agent enum(input: EnumRequest) -> EnumResult {
             Use conservative wordlists and settings to avoid detection.
         """)
 
-        # Enumerate web services with nikto and gobuster
+        // Enumerate web services with nikto and gobuster
         for svc in services {
             if svc.service in ["http", "https", "http-alt", "http-proxy"] {
                 let protocol = if svc.port == 443 or svc.service == "https" then "https" else "http"
                 let web_url = protocol + "://" + svc.ip + ":" + svc.port
 
-                # Nikto scan
+                // Nikto scan
                 let nikto_result = nikto_scan(target: web_url, tuning: 0)
                 store_tool_run(
                     engagement_id: engagement_id,
@@ -102,7 +102,7 @@ agent enum(input: EnumRequest) -> EnumResult {
                     description: "nikto scan of " + web_url
                 )
 
-                # Parse nikto findings
+                // Parse nikto findings
                 if nikto_result.findings_count > 0 {
                     for finding in nikto_result.findings {
                         store_finding(
@@ -121,11 +121,11 @@ agent enum(input: EnumRequest) -> EnumResult {
                     }
                 }
 
-                # Gobuster directory brute force
+                // Gobuster directory brute force
                 let gobuster_result = gobuster_scan(
                     target: web_url,
                     mode: "dir",
-                    wordlist: "/usr/share/wordlists/dirb/common.txt",
+                    wordlist: "/usr/share/seclists/Discovery/Web-Content/common.txt",
                     extensions: "php,html,txt,asp,aspx,jsp"
                 )
                 store_tool_run(
@@ -169,7 +169,7 @@ agent enum(input: EnumRequest) -> EnumResult {
                 enumerated_targets = enumerated_targets + [svc.ip]
             }
 
-            # Enumerate SMB services
+            // Enumerate SMB services
             if svc.service in ["microsoft-ds", "netbios-ssn", "smb"] or svc.port in [445, 139] {
                 let e4l_result = enum4linux_scan(target: svc.ip, options: "-a")
                 store_tool_run(
@@ -207,7 +207,7 @@ agent enum(input: EnumRequest) -> EnumResult {
                     }
                 }
 
-                # Try anonymous SMB access
+                // Try anonymous SMB access
                 let smb_result = smbclient_access(target: svc.ip)
                 store_tool_run(
                     engagement_id: engagement_id,
@@ -223,7 +223,7 @@ agent enum(input: EnumRequest) -> EnumResult {
                 enumerated_targets = enumerated_targets + [svc.ip]
             }
 
-            # Enumerate SNMP services
+            // Enumerate SNMP services
             if svc.service == "snmp" or svc.port == 161 {
                 let snmp_result = snmpwalk_enum(
                     target: svc.ip,

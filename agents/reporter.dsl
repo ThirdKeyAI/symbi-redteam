@@ -1,10 +1,10 @@
-# =============================================================================
-# reporter.dsl -- Report generation phase agent
-#
-# Generates executive, technical, and remediation reports from the evidence
-# database. Can also produce retest comparison reports. Supports Markdown,
-# HTML, and PDF output formats.
-# =============================================================================
+// =============================================================================
+// reporter.dsl -- Report generation phase agent
+//
+// Generates executive, technical, and remediation reports from the evidence
+// database. Can also produce retest comparison reports. Supports Markdown,
+// HTML, and PDF output formats.
+// =============================================================================
 
 metadata {
     version = "1.0.0"
@@ -55,7 +55,7 @@ agent reporter(input: ReportRequest) -> ReportResult {
         let report_paths = []
         let reports_count = 0
 
-        # Review findings before generating reports
+        // Review findings before generating reports
         let all_findings = query_findings(engagement_id: engagement_id)
 
         let report_plan = reason("""
@@ -81,7 +81,7 @@ agent reporter(input: ReportRequest) -> ReportResult {
             - Provide specific, actionable guidance
         """)
 
-        # Generate each report type in each format
+        // Generate each report type in each format
         for report_type in report_types {
             for format in output_formats {
                 let report = generate_report(
@@ -114,7 +114,7 @@ agent reporter(input: ReportRequest) -> ReportResult {
             }
         }
 
-        # Generate retest comparison if baseline provided
+        // Generate retest comparison if baseline provided
         if baseline_id != "" {
             for format in output_formats {
                 let comparison = compare_engagements(
