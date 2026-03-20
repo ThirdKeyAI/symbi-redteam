@@ -94,21 +94,17 @@ Seven policy files enforce governance at every level:
 ### Prerequisites
 
 - Docker with compose v2
-- A local clone of the [Symbiont](https://github.com/ThirdKeyAI/symbiont) runtime repo (for building from source)
 - An Anthropic API key
 
 ### Build
 
-The Docker image builds the Symbiont runtime from local source. Copy or rsync the symbiont repo into the build context (excluding `target/` and `.git/` to keep it small):
+The Docker image installs the Symbiont runtime from crates.io. First build takes ~15 minutes for Rust compilation; subsequent builds use Docker layer caching.
 
 ```bash
-# Copy symbiont source (exclude build artifacts)
-rsync -a --exclude='target/' --exclude='.git/' ../symbiont/ symbiont/
-
 # Set your API key
 export ANTHROPIC_API_KEY=your-key
 
-# Build the container (first build takes ~15 min for Rust compilation)
+# Build the container
 docker compose build
 ```
 

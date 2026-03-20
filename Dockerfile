@@ -16,31 +16,19 @@
 # Cedar policy-gated and cryptographically audited.
 # =============================================================================
 
-# --- Stage 1: Build the symbi runtime from local source ---
-#
-# Before building, copy or symlink the symbiont repo into this directory:
-#   ln -sf ../symbiont symbiont
-#   docker compose build
-#
+# --- Stage 1: Install the symbi runtime from crates.io ---
 FROM rust:latest AS builder
 
 WORKDIR /build
 
-# Install build dependencies
+# Install build dependencies required by symbi's transitive deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler libprotobuf-dev cmake pkg-config libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the full symbiont source tree (symlinked or copied into build context)
-COPY symbiont/ ./symbiont/
-
-# Build symbi from local source with required features
-# The symbi-runtime dep already includes cloud-llm, vector-lancedb, http-input, http-api.
-# We add cedar to the runtime features via cargo's package feature syntax,
-# and enable native-sandbox + interactive at the top level.
-RUN cd symbiont && cargo build -j2 --release \
-    --features "native-sandbox,interactive,symbi-runtime/cedar" \
-    && cp target/release/symbi /usr/local/bin/symbi
+# Install symbi from crates.io with required features
+RUN cargo install symbi --locked \
+    --features "native-sandbox,interactive"
 
 # --- Stage 2: Runtime image with Kali toolchain ---
 FROM kalilinux/kali-rolling
@@ -100,7 +88,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy symbi binary from builder
-COPY --from=builder /usr/local/bin/symbi /usr/local/bin/symbi
+COPY --from=builder /usr/local/cargo/bin/symbi /usr/local/bin/symbi
 
 # Create non-root user for the runtime
 RUN groupadd -r symbi && useradd -r -g symbi -d /app -s /bin/bash symbi

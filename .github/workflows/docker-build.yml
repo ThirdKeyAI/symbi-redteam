@@ -1,0 +1,143 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+    paths:
+      - 'agents/**'
+      - 'policies/**'
+      - 'scripts/**'
+      - 'src/**'
+      - 'scope/**'
+      - 'db/**'
+      - 'templates/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'symbi.toml'
+      - 'Cargo.toml'
+      - '.github/workflows/docker-build.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'agents/**'
+      - 'policies/**'
+      - 'scripts/**'
+      - 'src/**'
+      - 'scope/**'
+      - 'db/**'
+      - 'templates/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'symbi.toml'
+      - 'Cargo.toml'
+      - '.github/workflows/docker-build.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: thirdkeyai/symbi-redteam
+
+jobs:
+  validate:
+    name: Validate Scripts and Configs
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Validate shell scripts
+      run: |
+        echo "=== Checking shell script syntax ==="
+        FAIL=0
+        for f in scripts/tool-wrappers/*.sh scripts/evidence-capture.sh scripts/scope-check.sh; do
+          if ! bash -n "$f" 2>/dev/null; then
+            echo "FAIL: $f"
+            FAIL=1
+          fi
+        done
+        if [ "$FAIL" -eq 1 ]; then exit 1; fi
+        echo "All shell scripts pass syntax check"
+
+    - name: Validate Python parsers
+      run: |
+        echo "=== Checking Python parser syntax ==="
+        python3 -m py_compile scripts/parse-outputs/parse-nmap-xml.py
+        python3 -m py_compile scripts/parse-outputs/parse-nikto.py
+        python3 -m py_compile scripts/parse-outputs/parse-gobuster.py
+        python3 -m py_compile scripts/parse-outputs/parse-nuclei.py
+        python3 -m py_compile scripts/parse-outputs/parse-sqlmap.py
+        python3 -m py_compile scripts/parse-outputs/parse-hydra.py
+        python3 -m py_compile scripts/parse-outputs/parse-msf.py
+        python3 -m py_compile scripts/parse-outputs/parse-impacket.py
+        python3 -m py_compile scripts/parse-outputs/parse-enum4linux.py
+        echo "All Python parsers pass syntax check"
+
+    - name: Validate SQLite schema
+      run: |
+        echo "=== Checking SQLite schema ==="
+        sqlite3 :memory: < db/schema.sql
+        echo "Schema loads cleanly"
+
+    - name: Validate TOML configs
+      run: |
+        echo "=== Checking TOML syntax ==="
+        python3 -c "import tomllib; tomllib.load(open('symbi.toml','rb'))"
+        python3 -c "import tomllib; tomllib.load(open('scope/scope.toml','rb'))"
+        echo "All TOML files valid"
+
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: ${{ github.event_name != 'pull_request' }}
+        load: ${{ github.event_name == 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha,scope=symbi-redteam
+        cache-to: type=gha,mode=max,scope=symbi-redteam
+
+    - name: Verify image
+      if: github.event_name == 'pull_request'
+      run: |
+        echo "=== Verifying image ==="
+        docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.pull_request.number }} --version
+        echo "=== Verifying tools ==="
+        docker run --rm --entrypoint bash \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:pr-${{ github.event.pull_request.number }} \
+          -c "nmap --version | head -1 && nuclei -version 2>&1 | head -1 && sqlmap --version && hydra -h 2>&1 | head -1"
