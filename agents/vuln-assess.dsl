@@ -9,7 +9,7 @@ metadata {
     version = "1.0.0"
     author = "thirdkey-ai"
     description = "Vulnerability assessment agent with template-based scanning"
-    license = "MIT"
+    license = "Apache-2.0"
     tags = ["security", "vulnerability", "nuclei", "sqlmap", "nse"]
 }
 

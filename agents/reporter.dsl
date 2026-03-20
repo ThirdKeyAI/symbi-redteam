@@ -10,7 +10,7 @@ metadata {
     version = "1.0.0"
     author = "thirdkey-ai"
     description = "Automated penetration test report generator"
-    license = "MIT"
+    license = "Apache-2.0"
     tags = ["security", "reporting", "compliance", "documentation"]
 }
 

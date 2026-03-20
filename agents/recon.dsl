@@ -16,7 +16,7 @@ metadata {
     version = "1.0.0"
     author = "thirdkey-ai"
     description = "Network reconnaissance agent with multi-tool parallel execution"
-    license = "MIT"
+    license = "Apache-2.0"
     tags = ["security", "reconnaissance", "nmap", "whois", "dns", "whatweb", "amass"]
 }
 

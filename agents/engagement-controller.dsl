@@ -18,7 +18,7 @@ metadata {
     version = "1.0.0"
     author = "thirdkey-ai"
     description = "Multi-phase penetration test engagement orchestrator"
-    license = "MIT"
+    license = "Apache-2.0"
     tags = ["security", "pentest", "orchestration", "multi-agent", "PTES"]
 }
 

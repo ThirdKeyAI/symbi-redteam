@@ -3,7 +3,7 @@ name = "symbi-redteam"
 version = "1.0.0"
 edition = "2021"
 description = "Governed autonomous penetration testing platform"
-license = "MIT"
+license = "Apache-2.0"
 
 [dependencies]
 symbi_mcp = { version = "0.1", features = ["tool-macros"] }

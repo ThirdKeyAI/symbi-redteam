@@ -9,7 +9,7 @@ metadata {
     version = "1.0.0"
     author = "thirdkey-ai"
     description = "Service enumeration agent for web, SMB, and SNMP targets"
-    license = "MIT"
+    license = "Apache-2.0"
     tags = ["security", "enumeration", "nikto", "gobuster", "smb", "snmp"]
 }
 
