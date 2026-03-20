@@ -68,6 +68,11 @@ if [[ "$EXTENSIONS" =~ [^a-zA-Z0-9,] ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+SCOPE_HOST=$(echo "$TARGET" | sed -E 's|https?://||; s|:[0-9]+.*||; s|/.*||')
+validate_scope "$SCOPE_HOST"
+
 # --- Build gobuster command ---
 GOBUSTER_CMD="gobuster"
 GOBUSTER_ARGS=("$MODE")

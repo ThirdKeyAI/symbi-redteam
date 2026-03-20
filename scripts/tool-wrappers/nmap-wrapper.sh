@@ -44,6 +44,10 @@ if [[ "$TARGET" == "0.0.0.0/0" ]] || [[ "$TARGET" == "*" ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+validate_scope "$TARGET"
+
 # Validate scan type
 VALID_TYPES="ping service version syn os_detect aggressive vuln_script"
 if ! echo "$VALID_TYPES" | grep -qw "$SCAN_TYPE"; then

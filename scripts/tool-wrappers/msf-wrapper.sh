@@ -74,6 +74,10 @@ if [[ "$TARGET" == "0.0.0.0" ]] || [[ "$TARGET" == "*" ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+validate_scope "$TARGET"
+
 # Validate MODULE looks like a valid Metasploit module path
 if ! [[ "$MODULE" =~ ^(exploit|auxiliary|post|encoder|nop|evasion)/ ]]; then
     echo "ERROR: Invalid module path (must start with exploit/, auxiliary/, post/, encoder/, nop/, or evasion/): ${MODULE}" >&2

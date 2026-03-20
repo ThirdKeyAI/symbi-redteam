@@ -55,6 +55,11 @@ if [[ "$OUTPUT_FORMAT" != "json" ]] && [[ "$OUTPUT_FORMAT" != "xml" ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+SCOPE_HOST=$(echo "$TARGET" | sed -E 's|https?://||; s|:[0-9]+.*||; s|/.*||')
+validate_scope "$SCOPE_HOST"
+
 # --- Determine format flag ---
 if [[ "$OUTPUT_FORMAT" == "json" ]]; then
     FORMAT_FLAG="json"

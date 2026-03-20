@@ -62,6 +62,10 @@ if [[ -n "$PASSWORD" ]] && [[ "$PASSWORD" =~ $INJECTION_RE ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+validate_scope "$TARGET"
+
 # --- Build smbclient command ---
 SMBCLIENT_CMD="smbclient"
 SMBCLIENT_ARGS=()

@@ -64,6 +64,10 @@ if [[ "$RECORD_TYPE_UPPER" =~ $INJECTION_RE ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+validate_scope "$TARGET"
+
 # --- Build commands ---
 DIG_CMD="dig"
 DIG_ARGS=("$TARGET" "$RECORD_TYPE_UPPER" "+noall" "+answer" "+authority" "+additional")

@@ -54,6 +54,10 @@ if ! [[ "$OPTIONS" =~ ^- ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+validate_scope "$TARGET"
+
 # --- Build enum4linux command ---
 ENUM4LINUX_CMD="enum4linux"
 

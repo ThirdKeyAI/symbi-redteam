@@ -54,6 +54,10 @@ if [[ "$TARGET" == "0.0.0.0" ]] || [[ "$TARGET" == "255.255.255.255" ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+validate_scope "$TARGET"
+
 # --- Build command ---
 WHOIS_CMD="whois"
 WHOIS_ARGS=("$TARGET")

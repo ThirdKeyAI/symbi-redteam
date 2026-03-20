@@ -69,6 +69,10 @@ if ! [[ "$TARGET" =~ ^[a-zA-Z0-9._:-]+$ ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+validate_scope "$TARGET"
+
 # Validate technique
 VALID_TECHNIQUES="psexec wmiexec smbexec atexec dcomexec"
 if ! echo "$VALID_TECHNIQUES" | grep -qw "$TECHNIQUE"; then

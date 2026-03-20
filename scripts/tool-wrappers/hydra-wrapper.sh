@@ -56,6 +56,10 @@ if [[ "$TARGET" == "0.0.0.0" ]] || [[ "$TARGET" == "*" ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+validate_scope "$TARGET"
+
 # Validate service is in the allowed list
 VALID_SERVICES="ssh ftp http-get http-post-form http-head smb rdp telnet mysql postgres mssql vnc pop3 imap smtp snmp ldap2 ldap3 socks5 adam6500"
 if ! echo "$VALID_SERVICES" | grep -qw "$SERVICE"; then

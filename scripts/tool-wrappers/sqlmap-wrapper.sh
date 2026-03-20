@@ -108,6 +108,11 @@ if [[ -n "$DATA" ]] && [[ "$DATA" =~ [\;\|\&\$\`] ]]; then
     exit 2
 fi
 
+# Defense-in-depth scope validation
+source /app/scripts/scope-check.sh
+SCOPE_HOST=$(echo "$TARGET_URL" | sed -E 's|https?://||; s|:[0-9]+.*||; s|/.*||')
+validate_scope "$SCOPE_HOST"
+
 # Validate DUMP_ALL is boolean
 if [[ "$DUMP_ALL" != "true" ]] && [[ "$DUMP_ALL" != "false" ]]; then
     echo "ERROR: dump_all must be 'true' or 'false': ${DUMP_ALL}" >&2
