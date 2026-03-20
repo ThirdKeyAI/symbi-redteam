@@ -1,5 +1,9 @@
 # symbi-redteam
 
+<p align="center">
+  <img src="symbi-redteam.png" alt="symbi-redteam" width="300">
+</p>
+
 Governed autonomous penetration testing platform powered by [Symbiont](https://github.com/ThirdKeyAI/symbiont). An AI engagement controller orchestrates a multi-phase pen test across a curated offensive toolchain where every tool has a different risk profile, every action is Cedar policy-gated, and every finding is evidence-chained.
 
 ## The Problem
