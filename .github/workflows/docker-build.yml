@@ -92,6 +92,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
     - name: Checkout repository
@@ -131,6 +132,23 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha,scope=symbi-redteam
         cache-to: type=gha,mode=max,scope=symbi-redteam
+
+    - name: Install cosign
+      if: github.event_name != 'pull_request'
+      uses: sigstore/cosign-installer@v3.4.0
+      with:
+        cosign-release: 'v2.2.3'
+
+    - name: Sign image with cosign
+      if: github.event_name != 'pull_request'
+      run: |
+        images="${{ steps.meta.outputs.tags }}"
+        for image in ${images//,/ }; do
+          echo "Signing image: $image"
+          cosign sign --yes "$image"
+        done
+      env:
+        COSIGN_EXPERIMENTAL: "1"
 
     - name: Verify image
       if: github.event_name == 'pull_request'

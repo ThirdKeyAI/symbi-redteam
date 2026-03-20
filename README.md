@@ -35,8 +35,8 @@ engagement-controller
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                  Engagement Controller                    │
-│    Maintains state · Enforces methodology · Orchestrates │
+│                  Engagement Controller                  │
+│    Maintains state · Enforces methodology · Orchestrates│
 └───────┬───────┬───────┬───────┬───────┬───────┬─────────┘
         │       │       │       │       │       │
    ┌────▼──┐ ┌─▼───┐ ┌─▼───┐ ┌▼────┐ ┌▼────┐ ┌▼────────┐
@@ -45,16 +45,16 @@ engagement-controller
    └───┬───┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └────┬────┘
        │        │       │       │       │          │
    ┌───▼────────▼───────▼───────▼───────▼──────────▼─────┐
-   │              MCP Tool Layer (31 tools)                │
-   │  Rust implementations · Cedar-gated · Audit-logged   │
-   ├──────────────────────────────────────────────────────┤
-   │              Shell Wrappers (19 scripts)              │
-   │  Arg validation · Timeout · JSON output · Defense     │
-   ├──────────────────────────────────────────────────────┤
-   │            Offensive Toolchain (Kali)                 │
-   │  nmap · nikto · nuclei · sqlmap · hydra · metasploit │
-   │  impacket · pypykatz · chisel · ligolo · gobuster    │
-   └──────────────────────────────────────────────────────┘
+   │              MCP Tool Layer (31 tools)              │
+   │  Rust implementations · Cedar-gated · Audit-logged  │
+   ├─────────────────────────────────────────────────────┤
+   │              Shell Wrappers (19 scripts)            │
+   │  Arg validation · Timeout · JSON output · Defense   │
+   ├─────────────────────────────────────────────────────┤
+   │            Offensive Toolchain (Kali)               │
+   │  nmap · nikto · nuclei · sqlmap · hydra · metasploit│
+   │  impacket · pypykatz · chisel · ligolo · gobuster   │
+   └─────────────────────────────────────────────────────┘
 ```
 
 ## Risk-Tiered Tool Authorization
@@ -93,28 +93,41 @@ Seven policy files enforce governance at every level:
 
 ### Prerequisites
 
-- Docker with compose v2
+- Docker
 - An Anthropic API key
 
-### Build
-
-The Docker image installs the Symbiont runtime from crates.io. First build takes ~15 minutes for Rust compilation; subsequent builds use Docker layer caching.
+### Using the pre-built image
 
 ```bash
-# Set your API key
+# Pull from GitHub Container Registry
+docker pull ghcr.io/thirdkeyai/symbi-redteam:latest
+
+# Set required environment variables
 export ANTHROPIC_API_KEY=your-key
-
-# Build the container
-docker compose build
-```
-
-### Run
-
-```bash
-# Generate a master key for encryption
 export SYMBIONT_MASTER_KEY=$(openssl rand -hex 32)
 
 # Start the runtime
+docker run --rm --network host --privileged \
+  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+  -e SYMBIONT_API_TOKEN="your-api-token" \
+  -e SYMBIONT_MASTER_KEY="$SYMBIONT_MASTER_KEY" \
+  ghcr.io/thirdkeyai/symbi-redteam:latest \
+  up -p 9080 --http-port 9081 --http.token "your-webhook-token"
+```
+
+### Building from source
+
+To build locally (e.g., to customize agents, policies, or tools):
+
+```bash
+# Clone the repo
+git clone https://github.com/ThirdKeyAI/symbi-redteam.git
+cd symbi-redteam
+
+# Build the container (first build ~15 min for Rust compilation)
+docker compose build
+
+# Start with local mounts for live editing
 docker run --rm --network host --privileged \
   -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
   -e SYMBIONT_API_TOKEN="your-api-token" \
