@@ -45,6 +45,9 @@ engagement-controller
    └───┬───┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └────┬────┘
        │        │       │       │       │          │
    ┌───▼────────▼───────▼───────▼───────▼──────────▼─────┐
+   │          ToolClad Manifests (19 .clad.toml)         │
+   │  Typed args · MCP schema · Evidence · Cedar metadata │
+   ├─────────────────────────────────────────────────────┤
    │              MCP Tool Layer (31 tools)              │
    │  Rust implementations · Cedar-gated · Audit-logged  │
    ├─────────────────────────────────────────────────────┤
@@ -197,7 +200,7 @@ Edit `scope/scope.toml` to define your engagement targets and update `policies/s
 - **Nuclei** downloads templates on first run inside the container. Templates are pre-downloaded during Docker build, but template updates require a rebuild.
 - **Metasploit** first-run initialization takes 30-60 seconds while the framework loads.
 - **Non-root execution**: The container runs as the `symbi` user by default. Tools requiring raw sockets (nmap SYN scans, chisel tunneling) need `--cap-add NET_RAW --cap-add NET_ADMIN` or `--privileged` for testing.
-- **MCP tool registration**: The Rust MCP tool definitions in `src/` define the tool interfaces. Full LLM-driven tool execution requires registering these tools with the Symbiont runtime's MCP server. Currently, the DSL agents define the orchestration logic while the tool wrappers handle direct execution.
+- **MCP tool registration**: ToolClad manifests in `tools/` auto-generate MCP schemas via `toolclad schema`. The Rust MCP tool definitions in `src/` provide the runtime registration layer. The Symbiont runtime's ToolCladExecutor discovers manifests from `tools/` and registers them as MCP tools automatically.
 
 ## Repository Structure
 
@@ -211,6 +214,8 @@ symbi-redteam/
 │   ├── exploit.dsl                # Exploitation (human-gated)
 │   ├── post-exploit.dsl           # Post-exploitation (human-gated)
 │   └── reporter.dsl              # Report generation
+├── tools/                     # 19 ToolClad manifests (.clad.toml)
+├── toolclad.toml              # Project-level custom type definitions
 ├── policies/                  # 7 Cedar policy files
 ├── src/                       # Rust MCP tool definitions
 │   ├── recon_tools.rs            # 5 recon tools + parse + CVE lookup
@@ -230,6 +235,35 @@ symbi-redteam/
 ├── Dockerfile                 # Multi-stage: Rust builder + Kali runtime
 ├── docker-compose.yml         # Security-hardened container config
 └── symbi.toml                 # Symbiont runtime configuration
+```
+
+## ToolClad Integration
+
+All 19 offensive tools have declarative [ToolClad](https://toolclad.org) manifests in `tools/`. Each `.clad.toml` defines:
+
+- **Typed parameters** with validation (scope_target, port, enum, credential_file, msf_options, etc.)
+- **Cedar metadata** for policy evaluation (resource, action, risk_tier, human_approval)
+- **MCP schema generation** — auto-generate `inputSchema`/`outputSchema` from manifests
+- **Evidence envelopes** with SHA-256 hashing and structured output
+
+Manifests use the **executor escape hatch** to delegate to existing shell wrappers, preserving defense-in-depth while adding ToolClad's typed validation layer:
+
+```
+Agent fills typed parameters → ToolClad validates → Shell wrapper executes → Evidence envelope
+```
+
+**Custom types** in `toolclad.toml` define project-specific enums and constraints:
+`hydra_service`, `nmap_scan_type`, `severity_level`, `dns_record_type`, `scan_rate`, `msf_module_path`, `impacket_tool`
+
+```bash
+# Validate all tool manifests
+for f in tools/*.clad.toml; do toolclad validate "$f"; done
+
+# Generate MCP schema for a tool
+toolclad schema tools/nmap_scan.clad.toml
+
+# Dry-run a tool
+toolclad test tools/whois_lookup.clad.toml --arg target=10.0.1.1
 ```
 
 ## Key Design Decisions
