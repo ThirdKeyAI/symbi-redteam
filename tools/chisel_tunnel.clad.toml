@@ -1,0 +1,42 @@
+[tool]
+name = "chisel_tunnel"
+version = "1.0.0"
+binary = "chisel"
+description = "TCP/UDP tunnel over HTTP for pivoting"
+timeout_seconds = 3600
+risk_tier = "critical"
+human_approval = true
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.mode]
+position = 1
+required = true
+type = "enum"
+allowed = ["server", "client"]
+description = "Chisel operating mode"
+
+[args.listen_addr]
+position = 2
+required = true
+type = "string"
+description = "Listen address (host:port)"
+
+[args.remote]
+position = 3
+required = false
+type = "string"
+default = ""
+description = "Remote tunnel specification"
+
+[command]
+executor = "/app/scripts/tool-wrappers/chisel-wrapper.sh"
+
+[output]
+format = "text"
+envelope = true
+
+[output.schema]
+type = "object"

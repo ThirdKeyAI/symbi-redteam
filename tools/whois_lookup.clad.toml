@@ -1,0 +1,27 @@
+[tool]
+name = "whois_lookup"
+version = "1.0.0"
+binary = "whois"
+description = "WHOIS domain and IP registration lookup"
+timeout_seconds = 30
+risk_tier = "low"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Domain or IP to query"
+
+[command]
+executor = "/app/scripts/tool-wrappers/whois-wrapper.sh"
+
+[output]
+format = "text"
+envelope = true
+
+[output.schema]
+type = "object"

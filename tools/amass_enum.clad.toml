@@ -1,0 +1,35 @@
+[tool]
+name = "amass_enum"
+version = "1.0.0"
+binary = "amass"
+description = "Subdomain enumeration and network mapping"
+timeout_seconds = 600
+risk_tier = "low"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Root domain for subdomain enumeration"
+
+[args.mode]
+position = 2
+required = false
+type = "enum"
+allowed = ["passive", "active"]
+default = "passive"
+description = "Enumeration mode"
+
+[command]
+executor = "/app/scripts/tool-wrappers/amass-wrapper.sh"
+
+[output]
+format = "json"
+envelope = true
+
+[output.schema]
+type = "object"

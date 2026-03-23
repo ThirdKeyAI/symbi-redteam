@@ -1,0 +1,34 @@
+[tool]
+name = "searchsploit_search"
+version = "1.0.0"
+binary = "searchsploit"
+description = "Exploit-DB local search for known exploits"
+timeout_seconds = 30
+risk_tier = "low"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.query]
+position = 1
+required = true
+type = "string"
+description = "Search query for exploit database"
+
+[args.exact_match]
+position = 2
+required = false
+type = "boolean"
+default = false
+description = "Require exact match"
+
+[command]
+executor = "/app/scripts/tool-wrappers/searchsploit-wrapper.sh"
+
+[output]
+format = "json"
+envelope = true
+
+[output.schema]
+type = "object"

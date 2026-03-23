@@ -1,0 +1,54 @@
+[tool]
+name = "smbclient_access"
+version = "1.0.0"
+binary = "smbclient"
+description = "SMB share access and file operations"
+timeout_seconds = 120
+risk_tier = "medium"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Target IP or hostname"
+
+[args.share]
+position = 2
+required = true
+type = "string"
+description = "SMB share name"
+
+[args.username]
+position = 3
+required = false
+type = "string"
+default = ""
+description = "Authentication username"
+
+[args.password]
+position = 4
+required = false
+type = "string"
+default = ""
+description = "Authentication password"
+
+[args.smb_command]
+position = 5
+required = false
+type = "string"
+default = "ls"
+description = "SMB command to execute"
+
+[command]
+executor = "/app/scripts/tool-wrappers/smbclient-wrapper.sh"
+
+[output]
+format = "text"
+envelope = true
+
+[output.schema]
+type = "object"

@@ -1,0 +1,36 @@
+[tool]
+name = "whatweb_scan"
+version = "1.0.0"
+binary = "whatweb"
+description = "Web technology fingerprinting scanner"
+timeout_seconds = 120
+risk_tier = "low"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "url"
+description = "Target URL to fingerprint"
+
+[args.aggression]
+position = 2
+required = false
+type = "integer"
+default = 1
+min = 1
+max = 4
+description = "Aggression level (1=stealthy, 4=heavy)"
+
+[command]
+executor = "/app/scripts/tool-wrappers/whatweb-wrapper.sh"
+
+[output]
+format = "json"
+envelope = true
+
+[output.schema]
+type = "object"

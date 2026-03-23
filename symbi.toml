@@ -40,6 +40,11 @@ collection_name = "redteam_embeddings"  # Single collection with type discrimina
 server_port = 8943
 tools_dir = "src"
 
+[toolclad]
+tools_dir = "tools"
+custom_types = "toolclad.toml"
+hot_reload = false
+
 [agent]
 max_iterations = 15                 # Max ORGA loop iterations per phase
 model = "claude-sonnet-4-20250514"

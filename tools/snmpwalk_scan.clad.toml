@@ -1,0 +1,41 @@
+[tool]
+name = "snmpwalk_scan"
+version = "1.0.0"
+binary = "snmpwalk"
+description = "SNMP tree walk for network device enumeration"
+timeout_seconds = 120
+risk_tier = "medium"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Target IP or hostname"
+
+[args.community]
+position = 2
+required = false
+type = "string"
+default = "public"
+description = "SNMP community string"
+
+[args.oid]
+position = 3
+required = false
+type = "string"
+default = ""
+description = "OID subtree to walk"
+
+[command]
+executor = "/app/scripts/tool-wrappers/snmpwalk-wrapper.sh"
+
+[output]
+format = "text"
+envelope = true
+
+[output.schema]
+type = "object"

@@ -1,0 +1,36 @@
+[tool]
+name = "pypykatz_extract"
+version = "1.0.0"
+binary = "pypykatz"
+description = "Offline credential extraction from memory dumps"
+timeout_seconds = 120
+risk_tier = "critical"
+human_approval = true
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.dump_file]
+position = 1
+required = true
+type = "credential_file"
+description = "Path to memory dump file (LSASS, SAM, NTDS)"
+
+[args.mode]
+position = 2
+required = false
+type = "enum"
+allowed = ["lsa", "registry", "ntds"]
+default = "lsa"
+description = "Extraction mode"
+
+[command]
+executor = "/app/scripts/tool-wrappers/pypykatz-wrapper.sh"
+
+[output]
+format = "json"
+envelope = true
+
+[output.schema]
+type = "object"

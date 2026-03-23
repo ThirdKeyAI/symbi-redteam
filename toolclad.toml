@@ -1,0 +1,31 @@
+# Project-level custom type definitions for symbi-redteam.
+# Referenced by .clad.toml manifests in tools/ via type = "type_name".
+
+[types.hydra_service]
+base = "enum"
+allowed = ["ssh", "ftp", "http-get", "http-post-form", "http-head", "smb", "rdp", "telnet", "mysql", "postgres", "mssql", "vnc", "pop3", "imap", "smtp", "snmp", "ldap2", "ldap3", "socks5", "adam6500"]
+
+[types.nmap_scan_type]
+base = "enum"
+allowed = ["ping", "service", "version", "syn", "os_detect", "aggressive", "vuln_script"]
+
+[types.severity_level]
+base = "enum"
+allowed = ["info", "low", "medium", "high", "critical"]
+
+[types.dns_record_type]
+base = "enum"
+allowed = ["A", "AAAA", "MX", "NS", "TXT", "SOA", "CNAME", "ANY", "PTR", "SRV"]
+
+[types.scan_rate]
+base = "integer"
+min = 1
+max = 10000
+
+[types.msf_module_path]
+base = "regex_match"
+pattern = "^(exploit|auxiliary|post)/.+"
+
+[types.impacket_tool]
+base = "enum"
+allowed = ["psexec", "smbexec", "wmiexec", "dcomexec", "atexec", "secretsdump"]

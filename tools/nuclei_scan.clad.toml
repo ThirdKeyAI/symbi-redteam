@@ -1,0 +1,42 @@
+[tool]
+name = "nuclei_scan"
+version = "1.0.0"
+binary = "nuclei"
+description = "Template-based vulnerability scanner"
+timeout_seconds = 900
+risk_tier = "high"
+human_approval = true
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Target IP, hostname, or URL"
+
+[args.template_tags]
+position = 2
+required = false
+type = "string"
+default = ""
+description = "Comma-separated template tags to filter"
+
+[args.severity]
+position = 3
+required = false
+type = "severity_level"
+default = ""
+description = "Minimum severity filter"
+
+[command]
+executor = "/app/scripts/tool-wrappers/nuclei-wrapper.sh"
+
+[output]
+format = "jsonl"
+envelope = true
+
+[output.schema]
+type = "object"

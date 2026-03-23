@@ -1,0 +1,50 @@
+[tool]
+name = "gobuster_scan"
+version = "1.0.0"
+binary = "gobuster"
+description = "Directory and DNS brute-force scanner"
+timeout_seconds = 600
+risk_tier = "medium"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "url"
+description = "Target URL for directory brute-forcing"
+
+[args.wordlist]
+position = 2
+required = true
+type = "credential_file"
+description = "Path to wordlist file"
+
+[args.mode]
+position = 3
+required = false
+type = "enum"
+allowed = ["dir", "dns", "vhost", "fuzz"]
+default = "dir"
+description = "Gobuster mode"
+
+[args.threads]
+position = 4
+required = false
+type = "integer"
+default = 10
+min = 1
+max = 50
+description = "Number of threads"
+
+[command]
+executor = "/app/scripts/tool-wrappers/gobuster-wrapper.sh"
+
+[output]
+format = "json"
+envelope = true
+
+[output.schema]
+type = "object"

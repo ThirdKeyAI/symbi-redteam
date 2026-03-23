@@ -1,0 +1,40 @@
+[tool]
+name = "nmap_scan"
+version = "1.0.0"
+binary = "nmap"
+description = "Network port and service scanner with multiple scan modes"
+timeout_seconds = 300
+risk_tier = "low"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Target IP, CIDR, or hostname to scan"
+
+[args.scan_type]
+position = 2
+required = true
+type = "nmap_scan_type"
+description = "Type of scan to perform"
+
+[args.extra_flags]
+position = 3
+required = false
+type = "string"
+default = ""
+description = "Additional nmap flags (Cedar-approved)"
+
+[command]
+executor = "/app/scripts/tool-wrappers/nmap-wrapper.sh"
+
+[output]
+format = "xml"
+envelope = true
+
+[output.schema]
+type = "object"

@@ -1,0 +1,85 @@
+[tool]
+name = "hydra_bruteforce"
+version = "1.0.0"
+binary = "hydra"
+description = "Network service credential brute-force tool"
+timeout_seconds = 1800
+risk_tier = "high"
+human_approval = true
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Target IP or hostname"
+
+[args.service]
+position = 2
+required = true
+type = "hydra_service"
+description = "Target service protocol"
+
+[args.port]
+position = 3
+required = false
+type = "port"
+description = "Target port (omit for service default)"
+
+[args.username_file]
+position = 4
+required = false
+type = "credential_file"
+description = "Path to username wordlist"
+
+[args.password_file]
+position = 5
+required = false
+type = "credential_file"
+description = "Path to password wordlist"
+
+[args.username]
+position = 6
+required = false
+type = "string"
+default = ""
+description = "Single username"
+
+[args.password]
+position = 7
+required = false
+type = "string"
+default = ""
+description = "Single password"
+
+[args.threads]
+position = 8
+required = false
+type = "integer"
+default = 4
+min = 1
+max = 64
+clamp = true
+description = "Concurrent threads"
+
+[args.timeout]
+position = 9
+required = false
+type = "integer"
+default = 30
+min = 1
+max = 120
+description = "Connection timeout per attempt (seconds)"
+
+[command]
+executor = "/app/scripts/tool-wrappers/hydra-wrapper.sh"
+
+[output]
+format = "json"
+envelope = true
+
+[output.schema]
+type = "object"

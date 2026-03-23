@@ -1,0 +1,35 @@
+[tool]
+name = "enum4linux_scan"
+version = "1.0.0"
+binary = "enum4linux"
+description = "Windows/Samba enumeration tool"
+timeout_seconds = 300
+risk_tier = "medium"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Target IP or hostname"
+
+[args.scan_type]
+position = 2
+required = false
+type = "enum"
+allowed = ["all", "users", "shares", "policies", "groups"]
+default = "all"
+description = "Enumeration scope"
+
+[command]
+executor = "/app/scripts/tool-wrappers/enum4linux-wrapper.sh"
+
+[output]
+format = "text"
+envelope = true
+
+[output.schema]
+type = "object"

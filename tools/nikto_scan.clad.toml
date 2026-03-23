@@ -1,0 +1,44 @@
+[tool]
+name = "nikto_scan"
+version = "1.0.0"
+binary = "nikto"
+description = "Web server vulnerability scanner"
+timeout_seconds = 600
+risk_tier = "medium"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "url"
+description = "Target URL (http:// or https://)"
+
+[args.tuning]
+position = 2
+required = false
+type = "integer"
+default = 0
+min = 0
+max = 9
+description = "Scan tuning option (0-9)"
+
+[args.output_format]
+position = 3
+required = false
+type = "enum"
+allowed = ["json", "xml"]
+default = "json"
+description = "Output format"
+
+[command]
+executor = "/app/scripts/tool-wrappers/nikto-wrapper.sh"
+
+[output]
+format = "json"
+envelope = true
+
+[output.schema]
+type = "object"

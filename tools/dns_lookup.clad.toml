@@ -1,0 +1,40 @@
+[tool]
+name = "dns_lookup"
+version = "1.0.0"
+binary = "dig"
+description = "DNS record lookup with configurable record types"
+timeout_seconds = 30
+risk_tier = "low"
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Domain name to query"
+
+[args.record_type]
+position = 2
+required = true
+type = "dns_record_type"
+description = "DNS record type"
+
+[args.nameserver]
+position = 3
+required = false
+type = "string"
+default = ""
+description = "Custom nameserver to query"
+
+[command]
+executor = "/app/scripts/tool-wrappers/dns-wrapper.sh"
+
+[output]
+format = "text"
+envelope = true
+
+[output.schema]
+type = "object"

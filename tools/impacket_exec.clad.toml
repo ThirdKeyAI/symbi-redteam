@@ -1,0 +1,68 @@
+[tool]
+name = "impacket_exec"
+version = "1.0.0"
+binary = "impacket"
+description = "Impacket remote execution and credential extraction"
+timeout_seconds = 300
+risk_tier = "critical"
+human_approval = true
+
+[tool.cedar]
+resource = "PenTest::ScanTarget"
+action = "execute_tool"
+
+[args.target]
+position = 1
+required = true
+type = "scope_target"
+description = "Target IP or hostname"
+
+[args.tool]
+position = 2
+required = true
+type = "impacket_tool"
+description = "Impacket tool to use"
+
+[args.username]
+position = 3
+required = true
+type = "string"
+description = "Authentication username"
+
+[args.password]
+position = 4
+required = false
+type = "string"
+default = ""
+description = "Authentication password"
+
+[args.hash]
+position = 5
+required = false
+type = "string"
+default = ""
+description = "NTLM hash for pass-the-hash"
+
+[args.domain]
+position = 6
+required = false
+type = "string"
+default = ""
+description = "Active Directory domain"
+
+[args.exec_command]
+position = 7
+required = false
+type = "string"
+default = ""
+description = "Command to execute on target"
+
+[command]
+executor = "/app/scripts/tool-wrappers/impacket-wrapper.sh"
+
+[output]
+format = "text"
+envelope = true
+
+[output.schema]
+type = "object"
