@@ -193,6 +193,63 @@ Edit `scope/scope.toml` to define your engagement targets and update `policies/s
 |------|---------|----------------|
 | 9080 | Runtime REST API (agents, status, execute) | `SYMBIONT_API_TOKEN` via Bearer header |
 | 9081 | HTTP Input webhook (agent invocation) | `--http.token` via Bearer header |
+| 4317 | OTLP gRPC (Jaeger trace collector) | None (local only) |
+| 16686 | Jaeger UI | None (local only) |
+
+### Observability
+
+#### Audit trail
+
+Every tool invocation is logged to `.symbiont/audit/` as JSONL with SHA-256 hash chaining (configured in `symbi.toml`). In Docker, these are persisted to the host via the `audit-logs/` volume mount:
+
+```bash
+# View recent audit entries
+cat audit-logs/*.jsonl | jq .
+
+# Filter by tool name
+cat audit-logs/*.jsonl | jq 'select(.tool == "nmap_scan")'
+
+# Filter by Cedar decision
+cat audit-logs/*.jsonl | jq 'select(.cedar_decision == "deny")'
+```
+
+#### Distributed tracing with Jaeger
+
+Symbiont 1.9.0+ supports W3C traceparent propagation via OpenTelemetry. Traces show the full ORGA loop per agent (Observe, Reason, Gate, Act) with cross-agent propagation through `ask()` calls.
+
+**1. Start Jaeger:**
+
+```bash
+docker run -d --name jaeger \
+  -p 16686:16686 \
+  -p 4317:4317 \
+  jaegertracing/all-in-one:latest
+```
+
+**2. Add telemetry config to `symbi.toml`:**
+
+```toml
+[telemetry]
+enabled = true
+otlp_endpoint = "http://localhost:4317"
+```
+
+**3. View traces:**
+
+Open `http://localhost:16686` and select the `symbi-redteam` service. Each engagement run produces traces spanning all phase agents, with spans for:
+
+- Agent ORGA loop iterations
+- Cedar policy evaluations (permit/deny)
+- Tool executions (wrapper invocation + duration)
+- Inter-agent `ask()` calls (controller → phase agent)
+- Human approval gates (time-to-approve)
+
+#### Log verbosity
+
+```bash
+# Increase log detail for debugging
+SYMBI_LOG_LEVEL=debug RUST_LOG=symbi=debug,cedar=info
+```
 
 ### Known limitations
 
