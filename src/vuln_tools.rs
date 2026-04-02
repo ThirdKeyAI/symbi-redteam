@@ -22,7 +22,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use symbi_mcp::{Tool, ToolError};
+use symbi_runtime::prelude::{ToolDefinition, ToolError};
 use std::process::Command;
 
 
@@ -576,10 +576,10 @@ pub fn searchsploit_query(input: SearchsploitQueryInput) -> Result<SearchsploitQ
 // intercepts invocations at the GATE phase for Cedar evaluation.
 // =============================================================================
 
-pub fn register_tools() -> Vec<Tool> {
+pub fn register_tools() -> Vec<ToolDefinition> {
     vec![
         // --- Vuln assessment tools (Cedar-gated) ---
-        Tool::new("nmap_vuln_script")
+        ToolDefinition::new("nmap_vuln_script")
             .description("Execute nmap with NSE vulnerability scripts against a target. \
                           Scans the specified port range and runs the given NSE scripts \
                           (default: vuln category). Requires human approval via Cedar.")
@@ -590,7 +590,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"execute_tool\"",
             ]),
 
-        Tool::new("nuclei_scan")
+        ToolDefinition::new("nuclei_scan")
             .description("Run Nuclei template-based vulnerability scanner against a target. \
                           Filters by severity level and supports specific template selection. \
                           Returns structured findings with template IDs and descriptions.")
@@ -601,7 +601,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"execute_tool\"",
             ]),
 
-        Tool::new("sqlmap_detect")
+        ToolDefinition::new("sqlmap_detect")
             .description("Detect SQL injection vulnerabilities in a target URL. \
                           Detection mode only -- identifies injectable parameters \
                           without extracting data or escalating privileges.")
@@ -613,7 +613,7 @@ pub fn register_tools() -> Vec<Tool> {
             ]),
 
         // --- Offline tools (no Cedar gate) ---
-        Tool::new("searchsploit_query")
+        ToolDefinition::new("searchsploit_query")
             .description("Search the local Exploit-DB database for known exploits. \
                           Offline, read-only operation. Returns matching exploits \
                           with title, path, type, and platform.")

@@ -27,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install symbi from crates.io with required features
-RUN cargo install symbi --locked \
+RUN cargo install symbi@1.9.1 --locked \
     --features "native-sandbox,interactive"
 
 # --- Stage 2: Runtime image with Kali toolchain ---

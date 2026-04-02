@@ -256,14 +256,17 @@ Agent fills typed parameters → ToolClad validates → Shell wrapper executes �
 `hydra_service`, `nmap_scan_type`, `severity_level`, `dns_record_type`, `scan_rate`, `msf_module_path`, `impacket_tool`
 
 ```bash
-# Validate all tool manifests
-for f in tools/*.clad.toml; do toolclad validate "$f"; done
+# Validate all tool manifests (symbi tools CLI, v1.9.0+)
+symbi tools validate
 
 # Generate MCP schema for a tool
-toolclad schema tools/nmap_scan.clad.toml
+symbi tools schema nmap_scan
 
 # Dry-run a tool
-toolclad test tools/whois_lookup.clad.toml --arg target=10.0.1.1
+symbi tools test nmap_scan --arg target=10.0.1.5 --arg scan_type=service
+
+# List all discovered tools
+symbi tools list
 ```
 
 ## Key Design Decisions

@@ -25,7 +25,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use symbi_mcp::{Tool, ToolInput, ToolOutput, ToolError};
+use symbi_runtime::prelude::{ToolDefinition, ToolError, ToolInput, ToolOutput};
 use std::process::Command;
 
 
@@ -626,10 +626,10 @@ fn urlencoding_encode(input: &str) -> String {
 // intercepts invocations at the GATE phase for Cedar evaluation.
 // =============================================================================
 
-pub fn register_tools() -> Vec<Tool> {
+pub fn register_tools() -> Vec<ToolDefinition> {
     vec![
         // --- Recon tools (Cedar-gated) ---
-        Tool::new("nmap_scan")
+        ToolDefinition::new("nmap_scan")
             .description("Execute a governed nmap scan against a target. \
                           The scan type and target must comply with Cedar policies. \
                           Aggressive scans require human approval.")
@@ -640,7 +640,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"execute_tool\"",
             ]),
 
-        Tool::new("whois_lookup")
+        ToolDefinition::new("whois_lookup")
             .description("Perform a WHOIS lookup for a target IP or domain. \
                           Returns registration data including registrar, dates, \
                           name servers, and contact information.")
@@ -650,7 +650,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"scan\"",
             ]),
 
-        Tool::new("dns_enumerate")
+        ToolDefinition::new("dns_enumerate")
             .description("Enumerate DNS records for a target domain. \
                           Supports A, AAAA, MX, NS, TXT, ANY, and other record types. \
                           Uses dig and host for comprehensive resolution.")
@@ -660,7 +660,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"scan\"",
             ]),
 
-        Tool::new("whatweb_scan")
+        ToolDefinition::new("whatweb_scan")
             .description("Fingerprint web technologies on a target URL. \
                           Identifies CMS, frameworks, server software, and plugins. \
                           Aggression level 1 is stealthy, 4 is heavy.")
@@ -670,7 +670,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"scan\"",
             ]),
 
-        Tool::new("amass_enum")
+        ToolDefinition::new("amass_enum")
             .description("Enumerate subdomains for a target domain using OWASP Amass. \
                           Passive mode uses public data sources only. \
                           Active mode includes DNS brute-forcing.")
@@ -681,14 +681,14 @@ pub fn register_tools() -> Vec<Tool> {
             ]),
 
         // --- Parser tools (no Cedar gate) ---
-        Tool::new("parse_nmap_xml")
+        ToolDefinition::new("parse_nmap_xml")
             .description("Parse nmap XML output into structured JSON for analysis. \
                           Operates on local files only -- no policy gate required.")
             .input_schema::<ParseNmapXmlInput>()
             .no_policy_gate(),
 
         // --- External query tools (Cedar-gated) ---
-        Tool::new("lookup_cve")
+        ToolDefinition::new("lookup_cve")
             .description("Look up known CVEs for a service/version combination. \
                           Queries the NVD API and returns matching vulnerabilities \
                           with CVSS scores and severity ratings.")

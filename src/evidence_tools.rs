@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use symbi_mcp::{Tool, ToolError};
+use symbi_runtime::prelude::{ToolDefinition, ToolError};
 use std::fs;
 use std::path::Path;
 
@@ -398,35 +398,35 @@ pub fn capture_evidence(input: CaptureEvidenceInput) -> Result<CaptureEvidenceOu
 // Tool registration
 // ---------------------------------------------------------------------------
 
-pub fn register_tools() -> Vec<Tool> {
+pub fn register_tools() -> Vec<ToolDefinition> {
     vec![
-        Tool::new("store_finding")
+        ToolDefinition::new("store_finding")
             .description("Store a security finding in the evidence database with severity, \
                           CVE references, and remediation guidance. All phase agents use this \
                           to record discovered vulnerabilities.")
             .input_schema::<StoreFindingInput>()
             .cedar_resource("PenTest::EvidenceStore")
             .cedar_actions(&["PenTest::Action::store_evidence"]),
-        Tool::new("query_findings")
+        ToolDefinition::new("query_findings")
             .description("Query findings from the evidence database with optional filters by \
                           phase, severity, and tool. Returns structured finding records.")
             .input_schema::<QueryFindingsInput>()
             .cedar_resource("PenTest::EvidenceStore")
             .cedar_actions(&["PenTest::Action::query_evidence"]),
-        Tool::new("search_similar_findings")
+        ToolDefinition::new("search_similar_findings")
             .description("Search for semantically similar findings using vector embeddings. \
                           Useful for correlating findings across tools and engagements, and \
                           for retest comparison.")
             .input_schema::<SearchSimilarInput>()
             .cedar_resource("PenTest::EvidenceStore")
             .cedar_actions(&["PenTest::Action::query_evidence"]),
-        Tool::new("store_tool_run")
+        ToolDefinition::new("store_tool_run")
             .description("Record a tool execution in the audit trail, including the exact \
                           command, Cedar policy decision, exit code, and approver identity.")
             .input_schema::<StoreToolRunInput>()
             .cedar_resource("PenTest::EvidenceStore")
             .cedar_actions(&["PenTest::Action::store_evidence"]),
-        Tool::new("capture_evidence")
+        ToolDefinition::new("capture_evidence")
             .description("Archive a tool output file or screenshot to the tamper-evident \
                           evidence store. Computes SHA-256 hash for integrity verification.")
             .input_schema::<CaptureEvidenceInput>()

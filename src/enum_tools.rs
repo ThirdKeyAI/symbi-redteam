@@ -17,7 +17,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-use symbi_mcp::{Tool, ToolError, ToolInput, ToolOutput};
+use symbi_runtime::prelude::{ToolDefinition, ToolError, ToolInput, ToolOutput};
 
 // =============================================================================
 // nikto_scan
@@ -419,9 +419,9 @@ pub fn snmpwalk_enum(input: SnmpwalkEnumInput) -> Result<SnmpwalkEnumOutput, Too
 // intercepts invocations at the GATE phase for Cedar evaluation.
 // =============================================================================
 
-pub fn register_tools() -> Vec<Tool> {
+pub fn register_tools() -> Vec<ToolDefinition> {
     vec![
-        Tool::new("nikto_scan")
+        ToolDefinition::new("nikto_scan")
             .description(
                 "Execute a governed Nikto web vulnerability scan against a target URL. \
                  Nikto checks for dangerous files, outdated server software, and \
@@ -433,7 +433,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"scan\"",
                 "PenTest::Action::\"execute_tool\"",
             ]),
-        Tool::new("gobuster_scan")
+        ToolDefinition::new("gobuster_scan")
             .description(
                 "Execute a governed Gobuster scan for directory/file brute-forcing, \
                  subdomain enumeration, or virtual host discovery. Uses wordlist-based \
@@ -445,7 +445,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"scan\"",
                 "PenTest::Action::\"execute_tool\"",
             ]),
-        Tool::new("enum4linux_scan")
+        ToolDefinition::new("enum4linux_scan")
             .description(
                 "Execute a governed enum4linux scan for SMB/NetBIOS enumeration. \
                  Enumerates users, shares, groups, password policies, and OS information \
@@ -457,7 +457,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"scan\"",
                 "PenTest::Action::\"execute_tool\"",
             ]),
-        Tool::new("smbclient_access")
+        ToolDefinition::new("smbclient_access")
             .description(
                 "Access or enumerate SMB shares on a target using smbclient. \
                  Can list available shares (anonymous or authenticated) or browse \
@@ -469,7 +469,7 @@ pub fn register_tools() -> Vec<Tool> {
                 "PenTest::Action::\"scan\"",
                 "PenTest::Action::\"execute_tool\"",
             ]),
-        Tool::new("snmpwalk_enum")
+        ToolDefinition::new("snmpwalk_enum")
             .description(
                 "Execute a governed SNMP walk against a target to enumerate system \
                  information, network interfaces, running processes, and installed \

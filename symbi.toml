@@ -47,5 +47,5 @@ hot_reload = false
 
 [agent]
 max_iterations = 15                 # Max ORGA loop iterations per phase
-model = "claude-sonnet-4-20250514"
+model = "claude-sonnet-4-6-20260401"
 temperature = 0.1

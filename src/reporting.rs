@@ -7,7 +7,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use symbi_mcp::{Tool, ToolError};
+use symbi_runtime::prelude::{ToolDefinition, ToolError};
 use std::fs;
 use std::process::Command;
 
@@ -707,29 +707,29 @@ pub fn manage_engagement(input: ManageEngagementInput) -> Result<ManageEngagemen
 // Tool registration
 // ---------------------------------------------------------------------------
 
-pub fn register_tools() -> Vec<Tool> {
+pub fn register_tools() -> Vec<ToolDefinition> {
     vec![
-        Tool::new("generate_report")
+        ToolDefinition::new("generate_report")
             .description("Generate a penetration test report (executive, technical, or \
                           remediation) from the evidence database. Supports markdown, HTML, \
                           and PDF output formats via pandoc.")
             .input_schema::<GenerateReportInput>()
             .cedar_resource("PenTest::ReportGenerator")
             .cedar_actions(&["PenTest::Action::execute_tool"]),
-        Tool::new("compare_engagements")
+        ToolDefinition::new("compare_engagements")
             .description("Generate a retest comparison report between a current engagement and \
                           a baseline. Identifies remediated, persistent, regressed, and new \
                           findings by matching on target, port, and title.")
             .input_schema::<CompareEngagementsInput>()
             .cedar_resource("PenTest::ReportGenerator")
             .cedar_actions(&["PenTest::Action::execute_tool"]),
-        Tool::new("create_engagement")
+        ToolDefinition::new("create_engagement")
             .description("Initialize a new penetration test engagement in the evidence database. \
                           Records client, date range, and scope hash for integrity tracking.")
             .input_schema::<CreateEngagementInput>()
             .cedar_resource("PenTest::EvidenceStore")
             .cedar_actions(&["PenTest::Action::store_evidence"]),
-        Tool::new("manage_engagement")
+        ToolDefinition::new("manage_engagement")
             .description("Update an engagement's status (planning, active, paused, complete).")
             .input_schema::<ManageEngagementInput>()
             .cedar_resource("PenTest::EvidenceStore")
