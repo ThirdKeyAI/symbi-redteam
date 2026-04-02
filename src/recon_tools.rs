@@ -49,10 +49,6 @@ pub struct NmapScanInput {
     /// Scan type: ping, service, version, syn, os_detect, aggressive, vuln_script
     pub scan_type: String,
 
-    /// Additional nmap flags (optional, validated by wrapper script)
-    #[serde(default)]
-    pub flags: String,
-
     /// Output format: "xml" (default) or "json"
     #[serde(default = "default_output_format")]
     pub output_format: String,

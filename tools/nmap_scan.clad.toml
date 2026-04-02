@@ -22,13 +22,6 @@ required = true
 type = "nmap_scan_type"
 description = "Type of scan to perform"
 
-[args.extra_flags]
-position = 3
-required = false
-type = "string"
-default = ""
-description = "Additional nmap flags (Cedar-approved)"
-
 [command]
 executor = "/app/scripts/tool-wrappers/nmap-wrapper.sh"
 

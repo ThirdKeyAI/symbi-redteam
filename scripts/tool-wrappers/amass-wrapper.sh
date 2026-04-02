@@ -56,6 +56,10 @@ if ! [[ "$TARGET" =~ \. ]]; then
     exit 2
 fi
 
+# Defense-in-depth domain scope validation
+source /app/scripts/scope-check.sh
+validate_domain_scope "$TARGET"
+
 # Validate passive_only is a boolean string
 PASSIVE_ONLY_LOWER=$(echo "$PASSIVE_ONLY" | tr '[:upper:]' '[:lower:]')
 if [[ "$PASSIVE_ONLY_LOWER" != "true" ]] && [[ "$PASSIVE_ONLY_LOWER" != "false" ]]; then

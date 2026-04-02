@@ -9,7 +9,8 @@
 # target to reach the wrapper.
 #
 # Usage: source /app/scripts/scope-check.sh
-#        validate_scope "$TARGET"  # exits with code 2 if out of scope
+#        validate_scope "$TARGET"         # IPv4/CIDR only -- exits 2 if out of scope
+#        validate_domain_scope "$DOMAIN"  # domain only -- exits 2 if out of scope
 # =============================================================================
 
 # Allowed CIDR prefixes (must match scope.toml and scope.cedar)
@@ -32,11 +33,35 @@ EXCLUDED_PREFIXES=(
     "10.100."      # Production DB
 )
 
+# Allowed domains for tools that require hostnames (e.g., amass subdomain enum)
+ALLOWED_DOMAINS=(
+    "acme-staging.local"
+    "acme-dev.local"
+    "acme-lab.local"
+)
+
+# Strict IPv4 dotted-quad regex (each octet 0-255)
+IPV4_OCTET='(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])'
+IPV4_RE="^${IPV4_OCTET}\.${IPV4_OCTET}\.${IPV4_OCTET}\.${IPV4_OCTET}$"
+CIDR_RE="^${IPV4_OCTET}\.${IPV4_OCTET}\.${IPV4_OCTET}\.${IPV4_OCTET}/([0-9]|[12][0-9]|3[0-2])$"
+
 validate_scope() {
     local target="$1"
 
     # Strip CIDR notation for IP comparison
     local ip="${target%%/*}"
+
+    # -----------------------------------------------------------------------
+    # STRICT IP FORMAT VALIDATION
+    # Only accept valid IPv4 addresses. Reject hostnames, qualified names,
+    # and anything else that could resolve to an out-of-scope IP at runtime
+    # (prevents hostname-prefix bypass and DNS rebinding TOCTOU attacks).
+    # -----------------------------------------------------------------------
+    if [[ ! "$target" =~ $IPV4_RE ]] && [[ ! "$target" =~ $CIDR_RE ]]; then
+        echo "ERROR: Target must be a valid IPv4 address or CIDR -- hostnames are not allowed: ${target}" >&2
+        echo "HINT: Resolve hostnames to IPs via dns_enumerate before scanning" >&2
+        exit 2
+    fi
 
     # Check excluded targets first (deny overrides allow)
     for excluded in "${EXCLUDED_TARGETS[@]}"; do
@@ -79,6 +104,38 @@ validate_scope() {
 
     if [[ "$in_scope" != "true" ]]; then
         echo "ERROR: Target $target is not in any allowed scope range" >&2
+        exit 2
+    fi
+}
+
+# Validate a domain name against the allowed domains list.
+# Used by tools that require hostnames (amass, etc.) instead of IPs.
+validate_domain_scope() {
+    local domain="$1"
+
+    # Must look like a domain (letters, digits, hyphens, dots only)
+    if ! [[ "$domain" =~ ^[a-zA-Z0-9.-]+$ ]]; then
+        echo "ERROR: Invalid domain format: ${domain}" >&2
+        exit 2
+    fi
+
+    # Must contain at least one dot
+    if ! [[ "$domain" =~ \. ]]; then
+        echo "ERROR: Target must be a fully qualified domain name: ${domain}" >&2
+        exit 2
+    fi
+
+    # Check against allowed domains (exact match or subdomain of allowed)
+    local in_scope=false
+    for allowed in "${ALLOWED_DOMAINS[@]}"; do
+        if [[ "$domain" == "$allowed" ]] || [[ "$domain" == *".${allowed}" ]]; then
+            in_scope=true
+            break
+        fi
+    done
+
+    if [[ "$in_scope" != "true" ]]; then
+        echo "ERROR: Domain $domain is not in any allowed scope domain" >&2
         exit 2
     fi
 }

@@ -23,8 +23,7 @@ DEFAULT_TIMING="${NMAP_DEFAULT_TIMING:-T3}"
 # --- Parse arguments ---
 TARGET="${1:?ERROR: Target CIDR required}"
 SCAN_TYPE="${2:?ERROR: Scan type required}"
-EXTRA_FLAGS="${3:-}"
-SCAN_ID="${4:-$(date +%s)-$$}"
+SCAN_ID="${3:-$(date +%s)-$$}"
 
 OUTPUT_FILE="${SCAN_DIR}/${SCAN_ID}.xml"
 
@@ -98,12 +97,6 @@ NMAP_ARGS+=(
     --no-stylesheet             # Skip XSLT (we parse raw XML)
     -v                          # Verbose for logging
 )
-
-# Append any extra flags the agent requested (already Gate-approved)
-if [[ -n "$EXTRA_FLAGS" ]]; then
-    # shellcheck disable=SC2086
-    NMAP_ARGS+=($EXTRA_FLAGS)
-fi
 
 # Target goes last
 NMAP_ARGS+=("$TARGET")

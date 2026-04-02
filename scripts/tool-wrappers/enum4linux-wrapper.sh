@@ -21,7 +21,7 @@ TIMEOUT_SECONDS=300
 
 # --- Parse arguments ---
 TARGET="${1:?ERROR: Target IP required}"
-OPTIONS="${2:--a}"
+SCAN_TYPE="${2:-all}"
 SCAN_ID="${3:-enum4linux-$(date +%s)-$$}"
 
 OUTPUT_FILE="${SCAN_DIR}/${SCAN_ID}.txt"
@@ -42,17 +42,20 @@ if ! [[ "$TARGET" =~ ^[a-zA-Z0-9._:-]+$ ]]; then
     exit 2
 fi
 
-# Block shell injection in options (only allow dashes, letters, digits, spaces)
-if [[ "$OPTIONS" =~ $INJECTION_RE ]]; then
-    echo "ERROR: Invalid characters in options: ${OPTIONS}" >&2
+# Map scan_type enum to specific flags (no free-form options accepted)
+VALID_TYPES="all users shares policies groups"
+if ! echo "$VALID_TYPES" | grep -qw "$SCAN_TYPE"; then
+    echo "ERROR: Unknown scan_type: ${SCAN_TYPE} (allowed: ${VALID_TYPES})" >&2
     exit 2
 fi
 
-# Validate options start with a dash
-if ! [[ "$OPTIONS" =~ ^- ]]; then
-    echo "ERROR: Options must start with a dash: ${OPTIONS}" >&2
-    exit 2
-fi
+case "$SCAN_TYPE" in
+    all)      OPTIONS="-a" ;;
+    users)    OPTIONS="-U" ;;
+    shares)   OPTIONS="-S" ;;
+    policies) OPTIONS="-P" ;;
+    groups)   OPTIONS="-G" ;;
+esac
 
 # Defense-in-depth scope validation
 source /app/scripts/scope-check.sh
@@ -60,19 +63,16 @@ validate_scope "$TARGET"
 
 # --- Build enum4linux command ---
 ENUM4LINUX_CMD="enum4linux"
-
-# shellcheck disable=SC2086
 FULL_CMD="${ENUM4LINUX_CMD} ${OPTIONS} ${TARGET}"
 
 # --- Execute ---
-echo "SCAN_START scan_id=${SCAN_ID} target=${TARGET} options=${OPTIONS} timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
+echo "SCAN_START scan_id=${SCAN_ID} target=${TARGET} scan_type=${SCAN_TYPE} timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
 
 START_TIME=$(date +%s%N)
 
 # Run enum4linux with a process timeout as a last-resort safety net
 # enum4linux writes to stdout, so we capture it to a file
-# shellcheck disable=SC2086
-timeout "$TIMEOUT_SECONDS" $ENUM4LINUX_CMD $OPTIONS "$TARGET" > "$OUTPUT_FILE" 2>&1 || true
+timeout "$TIMEOUT_SECONDS" "$ENUM4LINUX_CMD" "$OPTIONS" "$TARGET" > "$OUTPUT_FILE" 2>&1 || true
 
 EXIT_CODE=${PIPESTATUS[0]:-0}
 

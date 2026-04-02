@@ -86,6 +86,20 @@ if [[ "$MODE" == "client" ]]; then
     fi
 fi
 
+# Defense-in-depth scope validation on the target address
+# Extract the host portion from the relevant address (strip :port)
+source /app/scripts/scope-check.sh
+if [[ "$MODE" == "client" ]] && [[ "$REMOTE" != "none" ]]; then
+    REMOTE_HOST="${REMOTE%%:*}"
+    validate_scope "$REMOTE_HOST"
+elif [[ "$MODE" == "server" ]]; then
+    LISTEN_HOST="${LISTEN_ADDR%%:*}"
+    # Only validate non-wildcard listen addresses
+    if [[ "$LISTEN_HOST" != "0.0.0.0" ]] && [[ "$LISTEN_HOST" != "127.0.0.1" ]]; then
+        validate_scope "$LISTEN_HOST"
+    fi
+fi
+
 # --- Build chisel command ---
 CHISEL_CMD="chisel"
 CHISEL_ARGS=()

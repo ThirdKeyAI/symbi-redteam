@@ -89,6 +89,20 @@ if [[ "$MODE" == "agent" ]]; then
     fi
 fi
 
+# Defense-in-depth scope validation on the target address
+# Extract the host portion from the relevant address (strip :port)
+source /app/scripts/scope-check.sh
+if [[ "$MODE" == "agent" ]] && [[ "$CONNECT_ADDR" != "none" ]]; then
+    CONNECT_HOST="${CONNECT_ADDR%%:*}"
+    validate_scope "$CONNECT_HOST"
+elif [[ "$MODE" == "proxy" ]]; then
+    LISTEN_HOST="${LISTEN_ADDR%%:*}"
+    # Only validate non-wildcard listen addresses
+    if [[ "$LISTEN_HOST" != "0.0.0.0" ]] && [[ "$LISTEN_HOST" != "127.0.0.1" ]]; then
+        validate_scope "$LISTEN_HOST"
+    fi
+fi
+
 # --- Build ligolo command ---
 LIGOLO_CMD=""
 LIGOLO_ARGS=()
