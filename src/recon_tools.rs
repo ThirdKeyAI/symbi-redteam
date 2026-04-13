@@ -25,7 +25,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use crate::types::{ToolDefinition, ToolError};
+use crate::types::{ToolDefinition, ToolError, validate_allowlist, validate_confined_path};
 use std::process::Command;
 
 
@@ -77,6 +77,11 @@ pub struct NmapScanOutput {
 ///   - resource.is_external = true if target is outside RFC 1918
 ///   - resource.is_first_scan = true if no scan history for this CIDR
 pub fn nmap_scan(input: NmapScanInput) -> Result<NmapScanOutput, ToolError> {
+    validate_allowlist(
+        &input.scan_type, "scan_type",
+        &["ping", "service", "version", "syn", "os_detect", "aggressive", "vuln_script"],
+    )?;
+
     let scan_id = format!(
         "{}-{}",
         chrono::Utc::now().format("%Y%m%d%H%M%S"),
@@ -370,9 +375,11 @@ pub struct ParsedNmapOutput {
 }
 
 pub fn parse_nmap_xml(input: ParseNmapXmlInput) -> Result<ParsedNmapOutput, ToolError> {
+    let safe_path = validate_confined_path(&input.output_file, "/app/.symbiont/scans/")?;
+
     let output = Command::new("python3")
         .arg("/app/scripts/parse-outputs/parse-nmap-xml.py")
-        .arg(&input.output_file)
+        .arg(&safe_path)
         .output()
         .map_err(|e| ToolError::ExecutionFailed(format!("Parser failed: {e}")))?;
 

@@ -81,9 +81,11 @@ if [[ -n "$OID" ]]; then
 fi
 
 FULL_CMD="${SNMPWALK_CMD} ${SNMPWALK_ARGS[*]}"
+# Redact community string from logged command and output
+REDACTED_CMD=$(echo "$FULL_CMD" | sed "s/-c [^ ]*/-c ***REDACTED***/g")
 
 # --- Execute ---
-echo "SCAN_START scan_id=${SCAN_ID} target=${TARGET} community=${COMMUNITY} version=${VERSION} timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
+echo "SCAN_START scan_id=${SCAN_ID} target=${TARGET} community=***REDACTED*** version=${VERSION} timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
 
 START_TIME=$(date +%s%N)
 
@@ -112,9 +114,9 @@ fi
 
 # --- Return structured output to the runtime ---
 if [[ -f "$OUTPUT_FILE" ]] && [[ -s "$OUTPUT_FILE" ]]; then
-    echo "{\"status\": \"success\", \"output_file\": \"${OUTPUT_FILE}\", \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"snmpwalk_enum\", \"command\": \"${FULL_CMD}\"}"
+    echo "{\"status\": \"success\", \"output_file\": \"${OUTPUT_FILE}\", \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"snmpwalk_enum\", \"command\": \"${REDACTED_CMD}\"}"
     exit 0
 else
-    echo "{\"status\": \"error\", \"exit_code\": ${EXIT_CODE}, \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"snmpwalk_enum\", \"command\": \"${FULL_CMD}\"}"
+    echo "{\"status\": \"error\", \"exit_code\": ${EXIT_CODE}, \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"snmpwalk_enum\", \"command\": \"${REDACTED_CMD}\"}"
     exit 1
 fi

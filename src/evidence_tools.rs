@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use crate::types::{ToolDefinition, ToolError};
+use crate::types::{ToolDefinition, ToolError, validate_engagement_id, validate_confined_path};
 use std::fs;
 use std::path::Path;
 
@@ -62,6 +62,8 @@ pub struct StoreFindingOutput {
 }
 
 pub fn store_finding(input: StoreFindingInput) -> Result<StoreFindingOutput, ToolError> {
+    validate_engagement_id(&input.engagement_id)?;
+
     let db_path = std::env::var("SYMBI_DB_PATH")
         .unwrap_or_else(|_| "/app/.symbiont/data/redteam.db".to_string());
 
@@ -175,14 +177,13 @@ pub struct SearchSimilarOutput {
 }
 
 pub fn search_similar_findings(input: SearchSimilarInput) -> Result<SearchSimilarOutput, ToolError> {
-    // LanceDB vector search using the Symbiont runtime's embedding support.
-    // The runtime handles embedding generation via the configured model.
-    // We query the single "redteam_embeddings" collection with type="finding".
+    if !input.engagement_id.is_empty() {
+        validate_engagement_id(&input.engagement_id)?;
+    }
 
     let lance_path = std::env::var("SYMBI_LANCE_PATH")
         .unwrap_or_else(|_| "/app/.symbiont/data/lance".to_string());
 
-    // Connect to LanceDB and perform vector search
     let rt = tokio::runtime::Handle::try_current()
         .map_err(|e| ToolError::ExecutionFailed(format!("No async runtime: {e}")))?;
 
@@ -196,16 +197,17 @@ pub fn search_similar_findings(input: SearchSimilarInput) -> Result<SearchSimila
         let table = db.open_table("redteam_embeddings").execute().await
             .map_err(|e| ToolError::ExecutionFailed(format!("Table open failed: {e}")))?;
 
-        // Build a filtered scan query. Full vector search requires the Symbiont
-        // runtime's embedding layer to convert text → vectors at query time.
-        // When running standalone, fall back to a filtered scan with LIKE match.
+        // Escape LIKE wildcards and single quotes for safe filter construction.
+        let safe_query = input.query
+            .replace('\'', "''")
+            .replace('%', "\\%")
+            .replace('_', "\\_");
         let filter = if input.engagement_id.is_empty() {
-            format!("text LIKE '%{}%'", input.query.replace('\'', "''"))
+            format!("text LIKE '%{safe_query}%'")
         } else {
+            let safe_eid = input.engagement_id.replace('\'', "''");
             format!(
-                "engagement_id = '{}' AND text LIKE '%{}%'",
-                input.engagement_id.replace('\'', "''"),
-                input.query.replace('\'', "''"),
+                "engagement_id = '{safe_eid}' AND text LIKE '%{safe_query}%'",
             )
         };
 
@@ -311,6 +313,8 @@ pub struct StoreToolRunOutput {
 }
 
 pub fn store_tool_run(input: StoreToolRunInput) -> Result<StoreToolRunOutput, ToolError> {
+    validate_engagement_id(&input.engagement_id)?;
+
     let db_path = std::env::var("SYMBI_DB_PATH")
         .unwrap_or_else(|_| "/app/.symbiont/data/redteam.db".to_string());
 
@@ -367,38 +371,36 @@ pub struct CaptureEvidenceOutput {
 }
 
 pub fn capture_evidence(input: CaptureEvidenceInput) -> Result<CaptureEvidenceOutput, ToolError> {
+    // Validate engagement_id to prevent directory traversal
+    validate_engagement_id(&input.engagement_id)?;
+
+    // Confine source_path under /app/.symbiont/ to prevent reading arbitrary files
+    let safe_source = validate_confined_path(&input.source_path, "/app/.symbiont/")?;
+
     let evidence_dir = format!("/app/.symbiont/evidence/{}", input.engagement_id);
 
     // Create evidence directory if it doesn't exist
     fs::create_dir_all(&evidence_dir)
         .map_err(|e| ToolError::ExecutionFailed(format!("Failed to create evidence dir: {e}")))?;
 
-    let source = Path::new(&input.source_path);
-    if !source.exists() {
-        return Err(ToolError::ExecutionFailed(format!(
-            "Source file not found: {}",
-            input.source_path
-        )));
-    }
-
-    // Read source file and compute hash
-    let content = fs::read(&input.source_path)
-        .map_err(|e| ToolError::ExecutionFailed(format!("Failed to read source: {e}")))?;
+    // Read source file directly (no separate existence check — avoids TOCTOU race)
+    let content = fs::read(&safe_source)
+        .map_err(|e| ToolError::ExecutionFailed(format!("Failed to read source '{}': {e}", safe_source)))?;
 
     let hash = hex_sha256(&content);
     let size = content.len() as u64;
 
     // Generate evidence filename with hash prefix for deduplication
-    let source_name = source
+    let source_name = Path::new(&safe_source)
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "evidence".to_string());
     let evidence_filename = format!("{}_{}", &hash[..8], source_name);
     let evidence_path = format!("{}/{}", evidence_dir, evidence_filename);
 
-    // Copy to evidence directory
-    fs::copy(&input.source_path, &evidence_path)
-        .map_err(|e| ToolError::ExecutionFailed(format!("Failed to copy evidence: {e}")))?;
+    // Write from already-read content instead of re-reading (avoids TOCTOU)
+    fs::write(&evidence_path, &content)
+        .map_err(|e| ToolError::ExecutionFailed(format!("Failed to write evidence: {e}")))?;
 
     Ok(CaptureEvidenceOutput {
         evidence_path,

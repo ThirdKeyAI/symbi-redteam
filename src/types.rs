@@ -108,3 +108,118 @@ impl ToolDefinition {
         self
     }
 }
+
+// =============================================================================
+// Input validation helpers -- defense-in-depth for tool arguments
+//
+// Wrapper scripts also validate, but the Rust layer should reject obviously
+// bad input before spawning a subprocess.
+// =============================================================================
+
+/// Validate that a string matches UUID format (hex + hyphens, 36 chars).
+/// Also accepts the `eng-*` prefix format used by engagement IDs.
+pub fn validate_engagement_id(id: &str) -> Result<(), ToolError> {
+    // Accept UUID v4 format or eng-prefix format
+    let valid = id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        && !id.is_empty()
+        && id.len() <= 64
+        && !id.contains("..");
+    if !valid {
+        return Err(ToolError::InvalidInput(
+            format!("Invalid engagement ID: must be alphanumeric/hyphens/underscores, got '{id}'")
+        ));
+    }
+    Ok(())
+}
+
+/// Validate that a file path is confined under an allowed prefix and contains
+/// no traversal sequences. Resolves the path to catch symlink escapes.
+pub fn validate_confined_path(path: &str, allowed_prefix: &str) -> Result<String, ToolError> {
+    if path.contains("..") {
+        return Err(ToolError::InvalidInput(
+            format!("Path traversal detected: '{path}'")
+        ));
+    }
+    // Canonicalize if the path exists (catches symlinks), otherwise validate prefix
+    let resolved = if std::path::Path::new(path).exists() {
+        std::fs::canonicalize(path)
+            .map_err(|e| ToolError::InvalidInput(format!("Cannot resolve path '{path}': {e}")))?
+            .to_string_lossy()
+            .to_string()
+    } else {
+        path.to_string()
+    };
+    if !resolved.starts_with(allowed_prefix) {
+        return Err(ToolError::InvalidInput(
+            format!("Path '{resolved}' is not under allowed prefix '{allowed_prefix}'")
+        ));
+    }
+    Ok(resolved)
+}
+
+/// Validate that a value is one of the allowed options.
+pub fn validate_allowlist(value: &str, field_name: &str, allowed: &[&str]) -> Result<(), ToolError> {
+    if !allowed.contains(&value) {
+        return Err(ToolError::InvalidInput(
+            format!("Invalid {field_name}: '{value}'. Allowed: {}", allowed.join(", "))
+        ));
+    }
+    Ok(())
+}
+
+/// Validate a port range string (digits, commas, hyphens only).
+pub fn validate_port_range(range: &str) -> Result<(), ToolError> {
+    if range.is_empty() || !range.chars().all(|c| c.is_ascii_digit() || c == ',' || c == '-') {
+        return Err(ToolError::InvalidInput(
+            format!("Invalid port range: '{range}'. Must contain only digits, commas, and hyphens")
+        ));
+    }
+    Ok(())
+}
+
+/// Validate that a string contains no shell-dangerous or path-traversal characters.
+pub fn validate_safe_identifier(value: &str, field_name: &str) -> Result<(), ToolError> {
+    if value.is_empty() {
+        return Err(ToolError::InvalidInput(format!("{field_name} must not be empty")));
+    }
+    if !value.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.') {
+        return Err(ToolError::InvalidInput(
+            format!("Invalid {field_name}: '{value}'. Must be alphanumeric, underscores, hyphens, or dots")
+        ));
+    }
+    if value.contains("..") {
+        return Err(ToolError::InvalidInput(
+            format!("{field_name} must not contain '..'")
+        ));
+    }
+    Ok(())
+}
+
+/// Validate nmap script names (comma-separated alphanumeric with hyphens/underscores).
+pub fn validate_nmap_scripts(scripts: &str) -> Result<(), ToolError> {
+    if scripts.is_empty() {
+        return Err(ToolError::InvalidInput("scripts must not be empty".to_string()));
+    }
+    if !scripts.chars().all(|c| c.is_ascii_alphanumeric() || c == ',' || c == '-' || c == '_' || c == '*') {
+        return Err(ToolError::InvalidInput(
+            format!("Invalid scripts: '{scripts}'. Must contain only alphanumeric, commas, hyphens, underscores, and wildcards")
+        ));
+    }
+    Ok(())
+}
+
+/// Validate a URL for basic safety (no shell chars, no newlines).
+pub fn validate_url(url: &str) -> Result<(), ToolError> {
+    if url.is_empty() {
+        return Err(ToolError::InvalidInput("URL must not be empty".to_string()));
+    }
+    let dangerous = [';', '|', '&', '$', '`', '\n', '\r', '\0'];
+    for c in dangerous {
+        if url.contains(c) {
+            return Err(ToolError::InvalidInput(
+                format!("URL contains dangerous character: '{}'", c.escape_default())
+            ));
+        }
+    }
+    Ok(())
+}

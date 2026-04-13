@@ -17,7 +17,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-use crate::types::{ToolDefinition, ToolError};
+use crate::types::{ToolDefinition, ToolError, validate_allowlist, validate_confined_path, validate_url};
 
 // =============================================================================
 // nikto_scan
@@ -71,6 +71,8 @@ pub struct NiktoScanOutput {
 ///   - resource.target = input.target
 ///   - resource.tuning = input.tuning
 pub fn nikto_scan(input: NiktoScanInput) -> Result<NiktoScanOutput, ToolError> {
+    validate_url(&input.target)?;
+
     let scan_id = format!(
         "nikto-{}-{}",
         chrono::Utc::now().format("%Y%m%d%H%M%S"),
@@ -156,6 +158,11 @@ pub struct GobusterScanOutput {
 ///   - resource.target = input.target
 ///   - resource.mode = input.mode
 pub fn gobuster_scan(input: GobusterScanInput) -> Result<GobusterScanOutput, ToolError> {
+    validate_allowlist(&input.mode, "mode", &["dir", "dns", "vhost"])?;
+    validate_url(&input.target)?;
+    // Confine wordlists to known safe directories
+    validate_confined_path(&input.wordlist, "/usr/share/")?;
+
     let scan_id = format!(
         "gobuster-{}-{}",
         chrono::Utc::now().format("%Y%m%d%H%M%S"),
@@ -200,15 +207,14 @@ pub struct Enum4linuxScanInput {
     /// Target IP address (e.g., "10.0.1.5")
     pub target: String,
 
-    /// enum4linux options. Default: "-a" (all basic enumeration).
-    /// Common options: -U (users), -S (shares), -P (password policy),
-    /// -G (groups), -o (OS info), -a (all of the above)
-    #[serde(default = "default_enum4linux_options")]
-    pub options: String,
+    /// Scan type: all, users, shares, policies, groups
+    /// Maps to the wrapper's enum: all=-a, users=-U, shares=-S, policies=-P, groups=-G
+    #[serde(default = "default_enum4linux_scan_type")]
+    pub scan_type: String,
 }
 
-fn default_enum4linux_options() -> String {
-    "-a".to_string()
+fn default_enum4linux_scan_type() -> String {
+    "all".to_string()
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -227,6 +233,11 @@ pub struct Enum4linuxScanOutput {
 ///   - resource.target = input.target
 ///   - resource.options = input.options
 pub fn enum4linux_scan(input: Enum4linuxScanInput) -> Result<Enum4linuxScanOutput, ToolError> {
+    validate_allowlist(
+        &input.scan_type, "scan_type",
+        &["all", "users", "shares", "policies", "groups"],
+    )?;
+
     let scan_id = format!(
         "enum4linux-{}-{}",
         chrono::Utc::now().format("%Y%m%d%H%M%S"),
@@ -235,7 +246,7 @@ pub fn enum4linux_scan(input: Enum4linuxScanInput) -> Result<Enum4linuxScanOutpu
 
     let output = Command::new("/app/scripts/tool-wrappers/enum4linux-wrapper.sh")
         .arg(&input.target)
-        .arg(&input.options)
+        .arg(&input.scan_type)
         .arg(&scan_id)
         .output()
         .map_err(|e| ToolError::ExecutionFailed(format!("enum4linux wrapper failed: {e}")))?;

@@ -57,6 +57,11 @@ if [[ -n "$OPTIONS" ]]; then
         echo "ERROR: Invalid characters in OPTIONS: ${OPTIONS}" >&2
         exit 2
     fi
+    # Reject newlines/carriage returns that could bypass per-line validation
+    if [[ "$OPTIONS" == *$'\n'* ]] || [[ "$OPTIONS" == *$'\r'* ]]; then
+        echo "ERROR: OPTIONS must not contain newlines" >&2
+        exit 2
+    fi
     # Validate each option looks like "set KEY VALUE"
     IFS=';' read -ra OPT_PARTS <<< "$OPTIONS"
     for opt in "${OPT_PARTS[@]}"; do

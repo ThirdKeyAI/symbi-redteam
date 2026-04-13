@@ -157,6 +157,8 @@ START_TIME=$(date +%s%N)
 
 # Run hydra with a process timeout (credential testing can take a long time)
 FULL_CMD="${HYDRA_CMD} ${HYDRA_ARGS[*]}"
+# Redact credentials from logged command
+REDACTED_CMD=$(echo "$FULL_CMD" | sed -E 's/-l [^ ]+/-l ***REDACTED***/g; s/-p [^ ]+/-p ***REDACTED***/g; s/-L [^ ]+/-L ***REDACTED***/g; s/-P [^ ]+/-P ***REDACTED***/g')
 timeout 1800 $HYDRA_CMD "${HYDRA_ARGS[@]}" 2>&1 | while IFS= read -r line; do
     echo "[hydra] $line" >&2
 done
@@ -179,15 +181,16 @@ if [[ -f "$OUTPUT_FILE" ]]; then
         fi
     else
         # Fallback: count results array entries in the JSON
-        CREDS_FOUND=$(python3 -c "
+        CREDS_FOUND=$(python3 - "$OUTPUT_FILE" <<'PYEOF'
 import json, sys
 try:
-    with open('${OUTPUT_FILE}') as f:
+    with open(sys.argv[1]) as f:
         data = json.load(f)
     print(len(data.get('results', [])))
 except Exception:
     print(0)
-" 2>/dev/null || echo "0")
+PYEOF
+2>/dev/null || echo "0")
     fi
 fi
 
@@ -199,12 +202,12 @@ if [[ $EXIT_CODE -eq 0 ]] || [[ $EXIT_CODE -eq 1 ]]; then
         STATUS="completed_no_credentials"
     fi
     cat <<RESULT_JSON
-{"status": "${STATUS}", "output_file": "${OUTPUT_FILE}", "scan_id": "${SCAN_ID}", "duration_ms": ${DURATION_MS}, "tool": "hydra_bruteforce", "command": "${FULL_CMD}", "credentials_found": ${CREDS_FOUND}}
+{"status": "${STATUS}", "output_file": "${OUTPUT_FILE}", "scan_id": "${SCAN_ID}", "duration_ms": ${DURATION_MS}, "tool": "hydra_bruteforce", "command": "${REDACTED_CMD}", "credentials_found": ${CREDS_FOUND}}
 RESULT_JSON
     exit 0
 else
     cat <<RESULT_JSON
-{"status": "error", "output_file": "${OUTPUT_FILE}", "scan_id": "${SCAN_ID}", "duration_ms": ${DURATION_MS}, "tool": "hydra_bruteforce", "command": "${FULL_CMD}", "credentials_found": 0}
+{"status": "error", "output_file": "${OUTPUT_FILE}", "scan_id": "${SCAN_ID}", "duration_ms": ${DURATION_MS}, "tool": "hydra_bruteforce", "command": "${REDACTED_CMD}", "credentials_found": 0}
 RESULT_JSON
     exit 1
 fi

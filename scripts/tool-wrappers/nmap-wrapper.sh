@@ -25,6 +25,12 @@ TARGET="${1:?ERROR: Target CIDR required}"
 SCAN_TYPE="${2:?ERROR: Scan type required}"
 SCAN_ID="${3:-$(date +%s)-$$}"
 
+# Reject path traversal characters in scan ID (used in output file path)
+if [[ "$SCAN_ID" =~ [/\\] ]] || [[ "$SCAN_ID" == *..* ]]; then
+    echo "ERROR: Invalid characters in scan ID: ${SCAN_ID}" >&2
+    exit 2
+fi
+
 OUTPUT_FILE="${SCAN_DIR}/${SCAN_ID}.xml"
 
 # --- Argument sanitization (defense in depth) ---

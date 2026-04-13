@@ -91,6 +91,8 @@ else
 fi
 
 FULL_CMD="${SMBCLIENT_CMD} ${SMBCLIENT_ARGS[*]}"
+# Redact password from logged command
+REDACTED_CMD=$(echo "$FULL_CMD" | sed 's/%[^ ]*/%***REDACTED***/g')
 
 # --- Execute ---
 echo "SCAN_START scan_id=${SCAN_ID} target=${TARGET} share=${SHARE:-<list>} timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >&2
@@ -116,9 +118,9 @@ fi
 
 # --- Return structured output to the runtime ---
 if [[ -f "$OUTPUT_FILE" ]] && [[ -s "$OUTPUT_FILE" ]]; then
-    echo "{\"status\": \"success\", \"output_file\": \"${OUTPUT_FILE}\", \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"smbclient_access\", \"command\": \"${FULL_CMD}\"}"
+    echo "{\"status\": \"success\", \"output_file\": \"${OUTPUT_FILE}\", \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"smbclient_access\", \"command\": \"${REDACTED_CMD}\"}"
     exit 0
 else
-    echo "{\"status\": \"error\", \"exit_code\": ${EXIT_CODE}, \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"smbclient_access\", \"command\": \"${FULL_CMD}\"}"
+    echo "{\"status\": \"error\", \"exit_code\": ${EXIT_CODE}, \"scan_id\": \"${SCAN_ID}\", \"duration_ms\": ${DURATION_MS}, \"tool\": \"smbclient_access\", \"command\": \"${REDACTED_CMD}\"}"
     exit 1
 fi

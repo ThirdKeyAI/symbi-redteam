@@ -22,7 +22,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use crate::types::{ToolDefinition, ToolError};
+use crate::types::{ToolDefinition, ToolError, validate_port_range, validate_nmap_scripts, validate_url};
 use std::process::Command;
 
 
@@ -79,20 +79,24 @@ pub struct NmapVulnScriptOutput {
 ///   - resource.environment = looked up from target registry
 ///   - resource.is_external = true if target is outside RFC 1918
 pub fn nmap_vuln_script(input: NmapVulnScriptInput) -> Result<NmapVulnScriptOutput, ToolError> {
+    // Validate port_range and scripts to prevent injection via extra_flags
+    validate_port_range(&input.port_range)?;
+    validate_nmap_scripts(&input.scripts)?;
+
     let scan_id = format!(
         "{}-{}",
         chrono::Utc::now().format("%Y%m%d%H%M%S"),
         std::process::id()
     );
 
-    // Build extra flags for port range and script selection
-    let extra_flags = format!("-p {} --script={}", input.port_range, input.scripts);
-
+    // Pass port range and scripts as separate arguments so the wrapper can
+    // handle them safely. The scan_id must be the 3rd arg to match the wrapper.
     let output = Command::new("/app/scripts/tool-wrappers/nmap-wrapper.sh")
         .arg(&input.target)
         .arg("vuln_script")
-        .arg(&extra_flags)
         .arg(&scan_id)
+        .arg(format!("-p {}", input.port_range))
+        .arg(format!("--script={}", input.scripts))
         .output()
         .map_err(|e| ToolError::ExecutionFailed(format!("nmap wrapper failed: {e}")))?;
 
@@ -379,6 +383,8 @@ pub struct SqlmapInjectionPoint {
 }
 
 pub fn sqlmap_detect(input: SqlmapDetectInput) -> Result<SqlmapDetectOutput, ToolError> {
+    validate_url(&input.target_url)?;
+
     let scan_id = format!(
         "{}-{}",
         chrono::Utc::now().format("%Y%m%d%H%M%S"),

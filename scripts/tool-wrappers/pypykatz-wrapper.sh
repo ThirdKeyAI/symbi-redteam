@@ -103,19 +103,17 @@ CRED_COUNT=0
 if [[ -f "$OUTPUT_FILE" ]] && [[ -s "$OUTPUT_FILE" ]]; then
     # Count credential entries in the JSON output
     # Look for username/password/hash entries across different credential types
-    CRED_COUNT=$(python3 -c "
+    CRED_COUNT=$(python3 - "$OUTPUT_FILE" <<'PYEOF'
 import json, sys
 try:
-    with open('${OUTPUT_FILE}') as f:
+    with open(sys.argv[1]) as f:
         data = json.load(f)
     count = 0
-    # Handle LSASS dump format
     if isinstance(data, dict):
         for session_key in data.get('logon_sessions', {}):
             session = data['logon_sessions'][session_key]
             if session.get('username', ''):
                 count += 1
-        # Handle registry hive format
         for sam_key in data.get('sam_hashes', []):
             count += 1
         for secret in data.get('secrets', []):
@@ -125,7 +123,8 @@ try:
     print(count)
 except Exception:
     print(0)
-" 2>/dev/null || echo "0")
+PYEOF
+2>/dev/null || echo "0")
 fi
 
 # --- Build command string for logging ---

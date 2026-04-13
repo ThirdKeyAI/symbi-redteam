@@ -7,7 +7,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use crate::types::{ToolDefinition, ToolError};
+use crate::types::{ToolDefinition, ToolError, validate_engagement_id, validate_allowlist};
 use std::fs;
 use std::process::Command;
 
@@ -40,14 +40,10 @@ pub struct GenerateReportOutput {
 }
 
 pub fn generate_report(input: GenerateReportInput) -> Result<GenerateReportOutput, ToolError> {
-    let valid_types = ["executive", "technical", "remediation"];
-    if !valid_types.contains(&input.report_type.as_str()) {
-        return Err(ToolError::InvalidInput(format!(
-            "Invalid report type '{}'. Must be one of: {}",
-            input.report_type,
-            valid_types.join(", ")
-        )));
-    }
+    // Validate engagement_id to prevent directory traversal in report paths
+    validate_engagement_id(&input.engagement_id)?;
+
+    validate_allowlist(&input.report_type, "report_type", &["executive", "technical", "remediation"])?;
 
     let valid_formats = ["markdown", "html", "pdf"];
     if !valid_formats.contains(&input.output_format.as_str()) {
@@ -83,9 +79,10 @@ pub fn generate_report(input: GenerateReportInput) -> Result<GenerateReportOutpu
     let tool_runs = crate::db::get_tool_runs(&conn, &input.engagement_id, None)
         .map_err(|e| ToolError::ExecutionFailed(format!("Tool runs query error: {e}")))?;
 
-    // Read the template
+    // Read the template (report_type is already validated via allowlist)
     let template_name = format!("report-{}.md", input.report_type);
     let template_path = format!("/app/templates/{}", template_name);
+    assert!(template_path.starts_with("/app/templates/"), "template path escaped prefix");
     let template = fs::read_to_string(&template_path)
         .map_err(|e| ToolError::ExecutionFailed(format!("Template read error: {e}")))?;
 
@@ -412,6 +409,9 @@ pub struct CompareEngagementsOutput {
 }
 
 pub fn compare_engagements(input: CompareEngagementsInput) -> Result<CompareEngagementsOutput, ToolError> {
+    validate_engagement_id(&input.engagement_id)?;
+    validate_engagement_id(&input.baseline_engagement_id)?;
+
     let db_path = std::env::var("SYMBI_DB_PATH")
         .unwrap_or_else(|_| "/app/.symbiont/data/redteam.db".to_string());
 
@@ -678,6 +678,7 @@ pub struct ManageEngagementOutput {
 }
 
 pub fn manage_engagement(input: ManageEngagementInput) -> Result<ManageEngagementOutput, ToolError> {
+    validate_engagement_id(&input.engagement_id)?;
     let valid_statuses = ["planning", "active", "paused", "complete"];
     if !valid_statuses.contains(&input.status.as_str()) {
         return Err(ToolError::InvalidInput(format!(
