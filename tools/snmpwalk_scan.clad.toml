@@ -31,7 +31,11 @@ default = ""
 description = "OID subtree to walk"
 
 [command]
+template = "/app/scripts/tool-wrappers/snmpwalk-wrapper.sh {} {target} {community} {oid} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/snmpwalk-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "text"

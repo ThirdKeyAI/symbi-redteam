@@ -26,7 +26,11 @@ max = 4
 description = "Aggression level (1=stealthy, 4=heavy)"
 
 [command]
+template = "/app/scripts/tool-wrappers/whatweb-wrapper.sh {target} {aggression} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/whatweb-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "json"

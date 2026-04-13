@@ -24,7 +24,11 @@ default = false
 description = "Require exact match"
 
 [command]
+template = "/app/scripts/tool-wrappers/searchsploit-wrapper.sh {} {query} {exact_match} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/searchsploit-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "json"

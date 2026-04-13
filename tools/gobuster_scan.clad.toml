@@ -40,7 +40,11 @@ max = 50
 description = "Number of threads"
 
 [command]
+template = "/app/scripts/tool-wrappers/gobuster-wrapper.sh {} {target} {wordlist} {mode} {threads} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/gobuster-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "json"

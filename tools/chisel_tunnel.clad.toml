@@ -32,7 +32,11 @@ default = ""
 description = "Remote tunnel specification"
 
 [command]
+template = "/app/scripts/tool-wrappers/chisel-wrapper.sh {} {mode} {listen_addr} {remote} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/chisel-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "text"

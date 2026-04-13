@@ -32,7 +32,11 @@ default = ""
 description = "Minimum severity filter"
 
 [command]
+template = "/app/scripts/tool-wrappers/nuclei-wrapper.sh {} {target} {template_tags} {severity} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/nuclei-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "jsonl"

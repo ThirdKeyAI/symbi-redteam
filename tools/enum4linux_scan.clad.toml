@@ -25,7 +25,11 @@ default = "all"
 description = "Enumeration scope"
 
 [command]
+template = "/app/scripts/tool-wrappers/enum4linux-wrapper.sh {} {target} {scan_type} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/enum4linux-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "text"

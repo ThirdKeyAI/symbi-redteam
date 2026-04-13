@@ -26,7 +26,11 @@ default = "lsa"
 description = "Extraction mode"
 
 [command]
+template = "/app/scripts/tool-wrappers/pypykatz-wrapper.sh {} {dump_file} {mode} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/pypykatz-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "json"

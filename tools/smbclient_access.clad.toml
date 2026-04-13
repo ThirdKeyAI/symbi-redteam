@@ -44,7 +44,11 @@ default = "ls"
 description = "SMB command to execute"
 
 [command]
+template = "/app/scripts/tool-wrappers/smbclient-wrapper.sh {} {target} {share} {username} {password} {smb_command} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/smbclient-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "text"

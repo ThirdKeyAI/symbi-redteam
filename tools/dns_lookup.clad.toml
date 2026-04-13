@@ -30,7 +30,11 @@ default = ""
 description = "Custom nameserver to query"
 
 [command]
+template = "/app/scripts/tool-wrappers/dns-wrapper.sh {} {target} {record_type} {nameserver} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/dns-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "text"

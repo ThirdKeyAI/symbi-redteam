@@ -75,7 +75,11 @@ max = 120
 description = "Connection timeout per attempt (seconds)"
 
 [command]
+template = "/app/scripts/tool-wrappers/hydra-wrapper.sh {} {target} {service} {port} {username_file} {password_file} {username} {password} {threads} {timeout} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/hydra-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "json"

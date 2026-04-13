@@ -25,7 +25,11 @@ default = "passive"
 description = "Enumeration mode"
 
 [command]
+template = "/app/scripts/tool-wrappers/amass-wrapper.sh {} {target} {mode} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/amass-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "json"

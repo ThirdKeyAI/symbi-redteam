@@ -17,7 +17,11 @@ type = "scope_target"
 description = "Domain or IP to query"
 
 [command]
+template = "/app/scripts/tool-wrappers/whois-wrapper.sh {} {target} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/whois-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "text"

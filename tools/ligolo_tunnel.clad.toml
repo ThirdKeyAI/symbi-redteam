@@ -33,7 +33,11 @@ default = ""
 description = "Address to listen on (proxy mode)"
 
 [command]
+template = "/app/scripts/tool-wrappers/ligolo-wrapper.sh {} {mode} {connect_addr} {listen_addr} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/ligolo-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "text"

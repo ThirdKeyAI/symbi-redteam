@@ -23,7 +23,11 @@ type = "nmap_scan_type"
 description = "Type of scan to perform"
 
 [command]
+template = "/app/scripts/tool-wrappers/nmap-wrapper.sh {target} {scan_type} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/nmap-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "xml"

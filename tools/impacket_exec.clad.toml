@@ -58,7 +58,11 @@ default = ""
 description = "Command to execute on target"
 
 [command]
+template = "/app/scripts/tool-wrappers/impacket-wrapper.sh {} {target} {tool} {username} {password} {hash} {domain} {exec_command} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/impacket-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "text"

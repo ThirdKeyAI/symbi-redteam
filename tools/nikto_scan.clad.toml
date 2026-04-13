@@ -34,7 +34,11 @@ default = "json"
 description = "Output format"
 
 [command]
+template = "/app/scripts/tool-wrappers/nikto-wrapper.sh {} {target} {tuning} {output_format} {_scan_id}"
 executor = "/app/scripts/tool-wrappers/nikto-wrapper.sh"
+
+[command.defaults]
+_scan_id = "auto"
 
 [output]
 format = "json"
