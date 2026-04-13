@@ -70,6 +70,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-lxml \
     python3-pip \
     ca-certificates \
+    libcap2-bin \
     jq \
     curl \
     procps \
@@ -85,7 +86,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends \
         libxml-writer-perl libio-socket-ssl-perl libnet-ssleay-perl \
         libjson-pp-perl libwhisker2-perl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    # Grant nmap raw socket capabilities so it can run SYN scans as non-root
+    && setcap cap_net_raw,cap_net_admin,cap_net_bind_service+eip $(which nmap) \
+    # Symlink wordlists to expected paths for tool wrappers
+    && mkdir -p /usr/share/wordlists/dirb \
+    && ln -sf /usr/share/wordlists/seclists/Discovery/Web-Content/common.txt \
+              /usr/share/wordlists/dirb/common.txt
 
 # Copy symbi binary from builder
 COPY --from=builder /usr/local/cargo/bin/symbi /usr/local/bin/symbi
@@ -103,6 +110,8 @@ COPY src/ ./src/
 COPY scope/ ./scope/
 COPY db/ ./db/
 COPY templates/ ./templates/
+COPY tools/ ./tools/
+COPY toolclad.toml ./toolclad.toml
 COPY symbi.toml ./symbi.toml
 COPY Cargo.toml ./Cargo.toml
 

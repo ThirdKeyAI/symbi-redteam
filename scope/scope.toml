@@ -7,10 +7,10 @@
 # =============================================================================
 
 [engagement]
-id = "eng-demo-001"
-client = "Acme Corp"
-start_time = "2026-03-16T08:00:00Z"
-end_time = "2026-03-20T18:00:00Z"
+id = "eng-juiceshop-001"
+client = "OWASP Juice Shop Lab"
+start_time = "2026-04-13T00:00:00Z"
+end_time = "2026-04-14T23:59:59Z"
 
 [[targets]]
 cidr = "10.0.1.0/24"

@@ -85,10 +85,6 @@ services:
       - NMAP_MAX_RATE=1000
       - NMAP_DEFAULT_TIMING=T3
 
-    # No host networking -- container gets its own namespace
-    networks:
-      - pentest-net
-
-networks:
-  pentest-net:
-    driver: bridge
+    # Use default bridge network so we can reach test targets
+    # like Juice Shop at 172.17.0.2
+    network_mode: bridge
