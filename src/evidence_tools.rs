@@ -8,7 +8,7 @@
 
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use symbi_runtime::prelude::{ToolDefinition, ToolError};
+use crate::types::{ToolDefinition, ToolError};
 use std::fs;
 use std::path::Path;
 
@@ -16,7 +16,7 @@ use std::path::Path;
 // store_finding -- Insert a finding into the evidence database
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StoreFindingInput {
     /// Engagement ID this finding belongs to
     pub engagement_id: String,
@@ -82,6 +82,8 @@ pub fn store_finding(input: StoreFindingInput) -> Result<StoreFindingOutput, Too
         cvss_score: input.cvss_score,
         cve_ids: if input.cve_ids.is_empty() { None } else { Some(input.cve_ids) },
         remediation: if input.remediation.is_empty() { None } else { Some(input.remediation) },
+        verified: false,
+        false_positive: false,
     };
 
     let finding_id = crate::db::insert_finding(&conn, &finding)
@@ -100,7 +102,7 @@ pub fn store_finding(input: StoreFindingInput) -> Result<StoreFindingOutput, Too
 // query_findings -- Query findings with optional filters
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct QueryFindingsInput {
     /// Engagement ID to query
     pub engagement_id: String,
@@ -150,7 +152,7 @@ pub fn query_findings(input: QueryFindingsInput) -> Result<QueryFindingsOutput, 
 // search_similar_findings -- Semantic search via LanceDB embeddings
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SearchSimilarInput {
     /// Natural language description to search for
     pub query: String,
@@ -185,29 +187,42 @@ pub fn search_similar_findings(input: SearchSimilarInput) -> Result<SearchSimila
         .map_err(|e| ToolError::ExecutionFailed(format!("No async runtime: {e}")))?;
 
     let results = rt.block_on(async {
+        use lancedb::query::{QueryBase, ExecutableQuery};
+        use futures::TryStreamExt;
+
         let db = lancedb::connect(&lance_path).execute().await
             .map_err(|e| ToolError::ExecutionFailed(format!("LanceDB connect failed: {e}")))?;
 
         let table = db.open_table("redteam_embeddings").execute().await
             .map_err(|e| ToolError::ExecutionFailed(format!("Table open failed: {e}")))?;
 
-        // Build search query with text-based search
-        // The Symbiont runtime's embedding layer handles the vector conversion
+        // Build a filtered scan query. Full vector search requires the Symbiont
+        // runtime's embedding layer to convert text → vectors at query time.
+        // When running standalone, fall back to a filtered scan with LIKE match.
+        let filter = if input.engagement_id.is_empty() {
+            format!("text LIKE '%{}%'", input.query.replace('\'', "''"))
+        } else {
+            format!(
+                "engagement_id = '{}' AND text LIKE '%{}%'",
+                input.engagement_id.replace('\'', "''"),
+                input.query.replace('\'', "''"),
+            )
+        };
+
         let query_results = table
             .query()
+            .only_if(filter)
             .limit(input.limit)
-            .nearest_to(lancedb::query::QueryBase::Full(input.query.clone()))
-            .map_err(|e| ToolError::ExecutionFailed(format!("Search query failed: {e}")))?
             .execute()
             .await
             .map_err(|e| ToolError::ExecutionFailed(format!("Search execute failed: {e}")))?;
 
-        let mut results = Vec::new();
-        let batches: Vec<_> = query_results
+        let batches: Vec<arrow_array::RecordBatch> = query_results
             .try_collect()
             .await
             .map_err(|e| ToolError::ExecutionFailed(format!("Collect failed: {e}")))?;
 
+        let mut results = Vec::new();
         for batch in batches {
             for row_idx in 0..batch.num_rows() {
                 let mut row = serde_json::Map::new();
@@ -231,7 +246,6 @@ pub fn search_similar_findings(input: SearchSimilarInput) -> Result<SearchSimila
 
 /// Convert an Arrow array element at a given index to a JSON value.
 fn arrow_array_to_json_value(col: &std::sync::Arc<dyn arrow_array::Array>, idx: usize) -> serde_json::Value {
-    use arrow_array::cast::AsArray;
     if col.is_null(idx) {
         return serde_json::Value::Null;
     }
@@ -256,7 +270,7 @@ fn arrow_array_to_json_value(col: &std::sync::Arc<dyn arrow_array::Array>, idx: 
 // store_tool_run -- Record a tool execution with Cedar decision
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct StoreToolRunInput {
     /// Engagement ID
     pub engagement_id: String,
@@ -330,7 +344,7 @@ pub fn store_tool_run(input: StoreToolRunInput) -> Result<StoreToolRunOutput, To
 // capture_evidence -- Screenshot/output archival with integrity hash
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CaptureEvidenceInput {
     /// Engagement ID
     pub engagement_id: String,

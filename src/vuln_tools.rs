@@ -22,7 +22,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use symbi_runtime::prelude::{ToolDefinition, ToolError};
+use crate::types::{ToolDefinition, ToolError};
 use std::process::Command;
 
 
@@ -38,7 +38,7 @@ use std::process::Command;
 ///   - escalation.cedar: human approval for vuln_script scan type
 ///
 /// The agent CANNOT execute this tool without passing all three policy files.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct NmapVulnScriptInput {
     /// Target IP address or CIDR range (must be in allowed_cidrs)
     pub target: String,
@@ -167,7 +167,7 @@ pub fn nmap_vuln_script(input: NmapVulnScriptInput) -> Result<NmapVulnScriptOutp
 ///
 /// Nuclei runs template-based checks against the target, filtering by severity.
 /// Output is JSONL format, parsed into structured findings.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct NucleiScanInput {
     /// Target URL or IP address
     pub target: String,
@@ -312,7 +312,7 @@ pub fn nuclei_scan(input: NucleiScanInput) -> Result<NucleiScanOutput, ToolError
 /// This tool runs in detect mode ONLY -- it identifies injection points but
 /// does NOT extract data, escalate privileges, or open OS shells. The exploit
 /// mode is handled separately by exploit_tools with stricter Cedar policies.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SqlmapDetectInput {
     /// Target URL with injectable parameter (e.g., "http://target/page?id=1")
     pub target_url: String,
@@ -476,7 +476,7 @@ pub fn sqlmap_detect(input: SqlmapDetectInput) -> Result<SqlmapDetectOutput, Too
 /// No Cedar policy gate required -- this tool operates on a local, read-only
 /// database. It does not connect to any network resources or interact with
 /// any target systems.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SearchsploitQueryInput {
     /// Search terms (e.g., "apache 2.4", "openssh 8.9")
     pub query: String,

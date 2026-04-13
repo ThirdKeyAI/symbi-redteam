@@ -25,7 +25,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use symbi_runtime::prelude::{ToolDefinition, ToolError, ToolInput, ToolOutput};
+use crate::types::{ToolDefinition, ToolError};
 use std::process::Command;
 
 
@@ -41,7 +41,7 @@ use std::process::Command;
 ///   - escalation.cedar: human approval for high-risk scan types
 ///
 /// The agent CANNOT execute this tool without passing all three policy files.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct NmapScanInput {
     /// Target IP address or CIDR range (must be in allowed_cidrs)
     pub target: String,
@@ -86,7 +86,6 @@ pub fn nmap_scan(input: NmapScanInput) -> Result<NmapScanOutput, ToolError> {
     let output = Command::new("/app/scripts/tool-wrappers/nmap-wrapper.sh")
         .arg(&input.target)
         .arg(&input.scan_type)
-        .arg(&input.flags)
         .arg(&scan_id)
         .output()
         .map_err(|e| ToolError::ExecutionFailed(format!("nmap wrapper failed: {e}")))?;
@@ -115,7 +114,7 @@ pub fn nmap_scan(input: NmapScanInput) -> Result<NmapScanOutput, ToolError> {
 /// Cedar-gated: requires PenTest::Action::"scan" on PenTest::ScanTarget.
 /// Retrieves domain/IP registration information including registrar,
 /// creation/expiration dates, name servers, and contact details.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct WhoisLookupInput {
     /// Target IP address or domain name
     pub target: String,
@@ -167,7 +166,7 @@ pub fn whois_lookup(input: WhoisLookupInput) -> Result<WhoisLookupOutput, ToolEr
 ///
 /// Cedar-gated: requires PenTest::Action::"scan" on PenTest::ScanTarget.
 /// Uses dig and host to resolve DNS records of the specified type.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct DnsEnumerateInput {
     /// Target domain name
     pub target: String,
@@ -229,7 +228,7 @@ pub fn dns_enumerate(input: DnsEnumerateInput) -> Result<DnsEnumerateOutput, Too
 /// Cedar-gated: requires PenTest::Action::"scan" on PenTest::ScanTarget.
 /// Identifies web technologies, frameworks, CMS platforms, server software,
 /// and other components running on the target.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct WhatwebScanInput {
     /// Target URL (e.g., "https://example.com")
     pub target: String,
@@ -294,7 +293,7 @@ pub fn whatweb_scan(input: WhatwebScanInput) -> Result<WhatwebScanOutput, ToolEr
 /// Cedar-gated: requires PenTest::Action::"scan" on PenTest::ScanTarget.
 /// Discovers subdomains through passive data sources (default) or active
 /// DNS brute-forcing when passive_only is false.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AmassEnumInput {
     /// Target domain name (e.g., "example.com")
     pub target: String,
@@ -357,7 +356,7 @@ pub fn amass_enum(input: AmassEnumInput) -> Result<AmassEnumOutput, ToolError> {
 ///
 /// This tool has no Cedar policy gate -- it operates on local files only.
 /// It's a pure data transformation, not a privileged operation.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ParseNmapXmlInput {
     /// Path to the nmap XML output file
     pub output_file: String,
@@ -398,7 +397,7 @@ pub fn parse_nmap_xml(input: ParseNmapXmlInput) -> Result<ParsedNmapOutput, Tool
 ///
 /// Cedar-gated: requires Network.Http capability (queries external CVE API).
 /// Rate limited to prevent API abuse.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct LookupCveInput {
     /// Service name (e.g., "openssh", "apache", "nginx")
     pub service: String,

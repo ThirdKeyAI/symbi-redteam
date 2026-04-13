@@ -17,7 +17,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::process::Command;
-use symbi_runtime::prelude::{ToolDefinition, ToolError, ToolInput, ToolOutput};
+use crate::types::{ToolDefinition, ToolError};
 
 // =============================================================================
 // nikto_scan
@@ -28,7 +28,7 @@ use symbi_runtime::prelude::{ToolDefinition, ToolError, ToolInput, ToolOutput};
 /// This tool is gated by Cedar policies:
 ///   - resource: PenTest::ScanTarget
 ///   - actions: PenTest::Action::"scan", PenTest::Action::"execute_tool"
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct NiktoScanInput {
     /// Target URL (e.g., "http://10.0.1.5" or "https://target.local:8443")
     pub target: String,
@@ -109,7 +109,7 @@ pub fn nikto_scan(input: NiktoScanInput) -> Result<NiktoScanOutput, ToolError> {
 /// This tool is gated by Cedar policies:
 ///   - resource: PenTest::ScanTarget
 ///   - actions: PenTest::Action::"scan", PenTest::Action::"execute_tool"
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GobusterScanInput {
     /// Target URL (e.g., "http://10.0.1.5")
     pub target: String,
@@ -195,7 +195,7 @@ pub fn gobuster_scan(input: GobusterScanInput) -> Result<GobusterScanOutput, Too
 /// This tool is gated by Cedar policies:
 ///   - resource: PenTest::ScanTarget
 ///   - actions: PenTest::Action::"scan", PenTest::Action::"execute_tool"
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Enum4linuxScanInput {
     /// Target IP address (e.g., "10.0.1.5")
     pub target: String,
@@ -264,7 +264,7 @@ pub fn enum4linux_scan(input: Enum4linuxScanInput) -> Result<Enum4linuxScanOutpu
 /// This tool is gated by Cedar policies:
 ///   - resource: PenTest::ScanTarget
 ///   - actions: PenTest::Action::"scan", PenTest::Action::"execute_tool"
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SmbclientAccessInput {
     /// Target IP address (e.g., "10.0.1.5")
     pub target: String,
@@ -338,7 +338,7 @@ pub fn smbclient_access(input: SmbclientAccessInput) -> Result<SmbclientAccessOu
 /// This tool is gated by Cedar policies:
 ///   - resource: PenTest::ScanTarget
 ///   - actions: PenTest::Action::"scan", PenTest::Action::"execute_tool"
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct SnmpwalkEnumInput {
     /// Target IP address (e.g., "10.0.1.5")
     pub target: String,

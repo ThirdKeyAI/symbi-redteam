@@ -7,7 +7,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use symbi_runtime::prelude::{ToolDefinition, ToolError};
+use crate::types::{ToolDefinition, ToolError};
 use std::fs;
 use std::process::Command;
 
@@ -15,7 +15,7 @@ use std::process::Command;
 // generate_report -- Produce engagement reports in multiple formats
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct GenerateReportInput {
     /// Engagement ID to generate report for
     pub engagement_id: String,
@@ -191,11 +191,11 @@ fn populate_report_template(
     content = content.replace("{{end_date}}", &engagement.end_date);
     content = content.replace("{{status}}", &engagement.status);
     content = content.replace("{{total_findings}}", &summary.total_findings.to_string());
-    content = content.replace("{{critical_count}}", &summary.critical.to_string());
-    content = content.replace("{{high_count}}", &summary.high.to_string());
-    content = content.replace("{{medium_count}}", &summary.medium.to_string());
-    content = content.replace("{{low_count}}", &summary.low.to_string());
-    content = content.replace("{{info_count}}", &summary.info.to_string());
+    content = content.replace("{{critical_count}}", &summary.critical_count.to_string());
+    content = content.replace("{{high_count}}", &summary.high_count.to_string());
+    content = content.replace("{{medium_count}}", &summary.medium_count.to_string());
+    content = content.replace("{{low_count}}", &summary.low_count.to_string());
+    content = content.replace("{{info_count}}", &summary.info_count.to_string());
     content = content.replace("{{total_tool_runs}}", &summary.total_tool_runs.to_string());
     content = content.replace(
         "{{phases_completed}}",
@@ -257,7 +257,7 @@ fn generate_technical_findings(findings: &[crate::db::Finding]) -> String {
 
     for (idx, f) in findings.iter().filter(|f| !f.false_positive).enumerate() {
         output.push_str(&format!("\n### Finding {}: {}\n\n", idx + 1, f.title));
-        output.push_str(&format!("| Field | Value |\n|-------|-------|\n"));
+        output.push_str("| Field | Value |\n|-------|-------|\n");
         output.push_str(&format!("| Severity | {} |\n", f.severity.to_uppercase()));
         if let Some(ref ip) = f.target_ip {
             output.push_str(&format!("| Target | {} |\n", ip));
@@ -277,7 +277,7 @@ fn generate_technical_findings(findings: &[crate::db::Finding]) -> String {
             output.push_str(&format!("| CVE IDs | {} |\n", cves));
         }
         output.push_str(&format!("| Verified | {} |\n", if f.verified { "Yes" } else { "No" }));
-        output.push_str(&format!("| Date | {} |\n", f.created_at));
+        output.push_str(&format!("| Date | {} |\n", f.created_at.as_deref().unwrap_or("N/A")));
 
         if let Some(ref desc) = f.description {
             output.push_str(&format!("\n**Description:**\n\n{}\n", desc));
@@ -390,7 +390,7 @@ fn capitalize(s: &str) -> String {
 // compare_engagements -- Retest delta report
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CompareEngagementsInput {
     /// Current (retest) engagement ID
     pub engagement_id: String,
@@ -527,7 +527,7 @@ pub fn compare_engagements(input: CompareEngagementsInput) -> Result<CompareEnga
     markdown.push_str(&format!("**Report Date:** {}\n\n", chrono::Utc::now().format("%Y-%m-%d")));
 
     markdown.push_str("## Summary\n\n");
-    markdown.push_str(&format!("| Status | Count |\n|--------|-------|\n"));
+    markdown.push_str("| Status | Count |\n|--------|-------|\n");
     markdown.push_str(&format!("| Remediated | {} |\n", remediated.len()));
     markdown.push_str(&format!("| Persistent | {} |\n", persistent.len()));
     markdown.push_str(&format!("| Regressed | {} |\n", regressed.len()));
@@ -607,7 +607,7 @@ pub fn compare_engagements(input: CompareEngagementsInput) -> Result<CompareEnga
 // create_engagement -- Initialize a new engagement record
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CreateEngagementInput {
     /// Client name
     pub client: String,
@@ -662,7 +662,7 @@ pub fn create_engagement(input: CreateEngagementInput) -> Result<CreateEngagemen
 // manage_engagement -- Update engagement status
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ManageEngagementInput {
     /// Engagement ID
     pub engagement_id: String,
