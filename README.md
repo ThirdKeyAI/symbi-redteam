@@ -215,7 +215,7 @@ cat audit-logs/*.jsonl | jq 'select(.cedar_decision == "deny")'
 
 #### Distributed tracing with Jaeger
 
-Symbiont 1.9.0+ supports W3C traceparent propagation via OpenTelemetry. Traces show the full ORGA loop per agent (Observe, Reason, Gate, Act) with cross-agent propagation through `ask()` calls.
+Symbiont 1.10.0+ supports W3C traceparent propagation via OpenTelemetry. Traces show the full ORGA loop per agent (Observe, Reason, Gate, Act) with cross-agent propagation through `ask()` calls.
 
 **1. Start Jaeger:**
 
@@ -313,7 +313,7 @@ Agent fills typed parameters → ToolClad validates → Shell wrapper executes �
 `hydra_service`, `nmap_scan_type`, `severity_level`, `dns_record_type`, `scan_rate`, `msf_module_path`, `impacket_tool`
 
 ```bash
-# Validate all tool manifests (symbi tools CLI, v1.9.0+)
+# Validate all tool manifests (symbi tools CLI, v1.10.0+)
 symbi tools validate
 
 # Generate MCP schema for a tool

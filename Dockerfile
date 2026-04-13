@@ -16,7 +16,7 @@
 # Cedar policy-gated and cryptographically audited.
 # =============================================================================
 
-# --- Stage 1: Build symbi runtime from local source ---
+# --- Stage 1: Install the symbi runtime from crates.io ---
 FROM rust:latest AS builder
 
 WORKDIR /build
@@ -26,9 +26,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler libprotobuf-dev cmake pkg-config libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy Symbiont source and build from local (includes HTTP Input fix)
-COPY symbiont/ ./symbiont/
-RUN cargo install --path ./symbiont \
+# Install symbi from crates.io with required features
+# v1.10.0 includes the HTTP Input tool-execution fixes
+RUN cargo install symbi@1.10.0 --locked \
     --features "native-sandbox,interactive"
 
 # --- Stage 2: Runtime image with Kali toolchain ---
