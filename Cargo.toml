@@ -16,3 +16,17 @@ chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1", features = ["full"] }
 arrow-array = "57"
 futures = "0.3.32"
+axum = { version = "0.7", features = ["macros"] }
+dashmap = "5"
+subtle = "2"
+async-trait = "0.1"
+hmac = "0.12"
+hex = "0.4"
+tokio-util = { version = "0.7", features = ["rt"] }
+toml = "0.8"
+symbi-channel-adapter = { path = "../../../symbiont/crates/channel-adapter", features = ["slack"] }
+symbi-runtime = { path = "../../../symbiont/crates/runtime" }
+
+[dev-dependencies]
+wiremock = "0.6"
+tempfile = "3"

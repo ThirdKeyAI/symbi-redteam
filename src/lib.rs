@@ -7,3 +7,4 @@ pub mod exploit_tools;
 pub mod postexploit_tools;
 pub mod evidence_tools;
 pub mod reporting;
+pub mod approvals;
