@@ -39,3 +39,6 @@ symbiont/
 # Superpowers working files
 docs/superpowers/
 docs/plans/
+
+# Worktrees
+.worktrees/
