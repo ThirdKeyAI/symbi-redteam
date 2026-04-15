@@ -14,6 +14,6 @@ pub mod http;
 pub mod slack_relay;
 pub mod types;
 
-// TODO(Task 3): pub use config::SlackApprovalConfig;
+pub use config::SlackApprovalConfig;
 // TODO(Task 2): pub use dispatcher::DualChannelDispatcher;
 pub use types::{ApprovalDecision, ApprovalRequest, Approver, Outcome, RiskTier};

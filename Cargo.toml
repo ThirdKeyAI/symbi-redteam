@@ -24,6 +24,7 @@ hmac = "0.12"
 hex = "0.4"
 tokio-util = { version = "0.7", features = ["rt"] }
 toml = "0.8"
+thiserror = "1"
 symbi-channel-adapter = { path = "../../../symbiont/crates/channel-adapter", features = ["slack"] }
 symbi-runtime = { path = "../../../symbiont/crates/runtime" }
 
