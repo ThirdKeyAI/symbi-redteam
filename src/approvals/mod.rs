@@ -16,4 +16,4 @@ pub mod types;
 
 // TODO(Task 3): pub use config::SlackApprovalConfig;
 // TODO(Task 2): pub use dispatcher::DualChannelDispatcher;
-// TODO(Task 2/9): pub use types::{ApprovalDecision, ApprovalRequest, Approver, Outcome, RiskTier};
+pub use types::{ApprovalDecision, ApprovalRequest, Approver, Outcome, RiskTier};
