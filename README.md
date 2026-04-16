@@ -186,6 +186,8 @@ Edit `scope/scope.toml` to define your engagement targets and update `policies/s
 | `SYMBIONT_API_TOKEN` | Yes | Bearer token for the runtime REST API (port 9080) |
 | `SYMBIONT_MASTER_KEY` | Yes | 256-bit hex key for encryption (`openssl rand -hex 32`) |
 | `SYMBI_LOG_LEVEL` | No | Log level: debug, info, warn, error (default: info) |
+| `SLACK_BOT_TOKEN` | If approvals enabled | Slack bot token (`xoxb-…`) for chat.postMessage / chat.update |
+| `SLACK_SIGNING_SECRET` | If approvals enabled | Slack app signing secret for webhook signature verification |
 
 ### Ports
 
@@ -193,6 +195,7 @@ Edit `scope/scope.toml` to define your engagement targets and update `policies/s
 |------|---------|----------------|
 | 9080 | Runtime REST API (agents, status, execute) | `SYMBIONT_API_TOKEN` via Bearer header |
 | 9081 | HTTP Input webhook (agent invocation) | `--http.token` via Bearer header |
+| 9082 | Slack approvals webhook (block_actions callbacks) | Slack signing secret |
 | 4317 | OTLP gRPC (Jaeger trace collector) | None (local only) |
 | 16686 | Jaeger UI | None (local only) |
 
@@ -258,6 +261,48 @@ SYMBI_LOG_LEVEL=debug RUST_LOG=symbi=debug,cedar=info
 - **Metasploit** first-run initialization takes 30-60 seconds while the framework loads.
 - **Non-root execution**: The container runs as the `symbi` user by default. Tools requiring raw sockets (nmap SYN scans, chisel tunneling) need `--cap-add NET_RAW --cap-add NET_ADMIN` or `--privileged` for testing.
 - **MCP tool registration**: ToolClad manifests in `tools/` auto-generate MCP schemas via `toolclad schema`. The Rust MCP tool definitions in `src/` provide the runtime registration layer. The Symbiont runtime's ToolCladExecutor discovers manifests from `tools/` and registers them as MCP tools automatically.
+
+### Slack approval relay (optional)
+
+When enabled, human-gated tools (exploit, post-exploit) post an Approve/Deny prompt to Slack in addition to the CLI prompt. The first responder wins.
+
+**Slack app setup:**
+1. Create a Slack app at https://api.slack.com/apps
+2. Bot Token Scopes: `chat:write`, `chat:write.public`, `im:write`
+3. Interactivity & Shortcuts: enable; Request URL = `https://<your-host>:9082/slack/events`
+4. Install to workspace; copy Bot Token (`xoxb-…`) and Signing Secret
+5. Invite the bot to the approval channel: `/invite @your-bot #symbi-approvals`
+
+**Configure `symbi.toml`:**
+
+```toml
+[approvals.slack]
+enabled = true
+bot_token_env = "SLACK_BOT_TOKEN"
+signing_secret_env = "SLACK_SIGNING_SECRET"
+channel = "#symbi-approvals"
+approvers = ["U01ABC123", "U02DEF456"]   # Slack member IDs
+dm_approvers = true
+events_bind_addr = "0.0.0.0:9082"
+```
+
+**Run with Slack enabled:**
+
+```bash
+docker run --rm --network host --privileged \
+  -e ANTHROPIC_API_KEY="$ANTHROPIC_API_KEY" \
+  -e SYMBIONT_API_TOKEN="..." \
+  -e SYMBIONT_MASTER_KEY="..." \
+  -e SLACK_BOT_TOKEN="xoxb-..." \
+  -e SLACK_SIGNING_SECRET="..." \
+  ghcr.io/thirdkeyai/symbi-redteam:latest \
+  up -p 9080 --http-port 9081 --http.token "..."
+```
+
+**v1 limitations:**
+- Pending approvals are in-memory; on container restart they're lost and the agent re-prompts on retry.
+- Approver allowlist is static (Slack `user_id`s in `symbi.toml`). Per-engagement Cedar-mapped approvers are planned for v2.
+- Slack only. Teams/Mattermost are deferred.
 
 ## Repository Structure
 
