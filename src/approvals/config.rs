@@ -63,6 +63,24 @@ impl SlackApprovalConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ApprovalsTopConfig {
+    pub slack: Option<SlackApprovalConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct SymbiTomlExtract {
+    #[serde(default)]
+    pub approvals: ApprovalsTopConfig,
+}
+
+pub fn load_from_symbi_toml(path: &std::path::Path) -> std::io::Result<ApprovalsTopConfig> {
+    let s = std::fs::read_to_string(path)?;
+    let parsed: SymbiTomlExtract = toml::from_str(&s)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))?;
+    Ok(parsed.approvals)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -78,6 +96,24 @@ mod tests {
             dm_approvers: true,
             events_bind_addr: "0.0.0.0:9082".into(),
         }
+    }
+
+    #[test]
+    fn loads_disabled_slack_section() {
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path().join("symbi.toml");
+        std::fs::write(&p, r##"
+[approvals.slack]
+enabled = false
+bot_token_env = "X"
+signing_secret_env = "Y"
+channel = "#a"
+approvers = []
+"##).unwrap();
+        let c = load_from_symbi_toml(&p).unwrap();
+        let s = c.slack.unwrap();
+        assert!(!s.enabled);
+        assert_eq!(s.channel, "#a");
     }
 
     #[test]

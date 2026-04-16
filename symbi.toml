@@ -49,3 +49,12 @@ hot_reload = false
 max_iterations = 15                 # Max ORGA loop iterations per phase
 model = "claude-sonnet-4-6-20260401"
 temperature = 0.1
+
+[approvals.slack]
+enabled = false
+bot_token_env = "SLACK_BOT_TOKEN"
+signing_secret_env = "SLACK_SIGNING_SECRET"
+channel = "#symbi-approvals"
+approvers = []
+dm_approvers = true
+events_bind_addr = "0.0.0.0:9082"
