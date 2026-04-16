@@ -162,6 +162,24 @@ impl SlackApprovalRelay {
         Ok(rx)
     }
 
+    /// Called by dispatcher after the winning decision is known.
+    /// Updates the channel message footer to reflect the resolution.
+    pub async fn finalize_resolution(
+        &self,
+        channel_msg_ts: &str,
+        decision: &ApprovalDecision,
+    ) -> Result<(), SlackError> {
+        let footer = blocks::resolved_footer(decision);
+        let body = serde_json::json!([footer]);
+        self.update_message(&self.cfg.channel, channel_msg_ts, body).await
+    }
+
+    /// Take the channel ts for a request without resolving the oneshot.
+    /// Used when the dispatcher needs to update Slack UI after a CLI win.
+    pub fn take_channel_ts(&self, request_id: Uuid) -> Option<String> {
+        self.pending.remove(&request_id).map(|(_, s)| s.channel_msg_ts)
+    }
+
     /// Called by the HTTP handler when an approver clicks a button.
     /// Sends the decision through the oneshot if still pending.
     pub fn try_resolve(&self, request_id: Uuid, decision: ApprovalDecision) -> bool {
