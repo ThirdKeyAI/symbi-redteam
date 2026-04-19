@@ -40,7 +40,9 @@ when {
     resource.tool_name != "query_findings" &&
     resource.tool_name != "search_similar_findings" &&
     resource.tool_name != "create_engagement" &&
-    resource.tool_name != "manage_engagement"
+    resource.tool_name != "manage_engagement" &&
+    resource.tool_name != "store_knowledge" &&
+    resource.tool_name != "recall_knowledge"
 };
 
 forbid (

@@ -35,6 +35,78 @@ fn init_db_creates_tables() {
     assert!(tables.contains(&"engagements".to_string()));
     assert!(tables.contains(&"findings".to_string()));
     assert!(tables.contains(&"tool_runs".to_string()));
+    assert!(tables.contains(&"knowledge".to_string()));
+}
+
+// =============================================================================
+// Knowledge CRUD -- reflector writes, phase agents read back
+// =============================================================================
+
+#[test]
+fn knowledge_insert_and_recall() {
+    let conn = test_db();
+    let eid = create_test_engagement(&conn);
+
+    let k1 = db::NewKnowledge {
+        engagement_id: eid.clone(),
+        phase: "recon".into(),
+        subject: "smb_null_session".into(),
+        predicate: "enabled_on".into(),
+        object: "10.0.2.15:445".into(),
+        confidence: 0.9,
+        source_tool: Some("enum4linux_scan".into()),
+        source_finding_id: None,
+    };
+    let k2 = db::NewKnowledge {
+        engagement_id: eid.clone(),
+        phase: "vuln".into(),
+        subject: "cve_2017_0144".into(),
+        predicate: "matches_service".into(),
+        object: "smb@10.0.2.15".into(),
+        confidence: 0.75,
+        source_tool: Some("nmap_vuln_script".into()),
+        source_finding_id: None,
+    };
+    db::insert_knowledge(&conn, &k1).unwrap();
+    db::insert_knowledge(&conn, &k2).unwrap();
+
+    let all = db::recall_knowledge(&conn, &eid, None, 10).unwrap();
+    assert_eq!(all.len(), 2);
+
+    let recon_only = db::recall_knowledge(&conn, &eid, Some("recon"), 10).unwrap();
+    assert_eq!(recon_only.len(), 1);
+    assert_eq!(recon_only[0].subject, "smb_null_session");
+
+    // Recall on a different engagement must not leak.
+    let other = db::create_engagement(&conn, "Other", "scope", "2026-01-01", "2026-02-01").unwrap();
+    let leaked = db::recall_knowledge(&conn, &other, None, 10).unwrap();
+    assert!(leaked.is_empty());
+}
+
+#[test]
+fn knowledge_limit_caps_rows_returned() {
+    let conn = test_db();
+    let eid = create_test_engagement(&conn);
+
+    for i in 0..8 {
+        db::insert_knowledge(
+            &conn,
+            &db::NewKnowledge {
+                engagement_id: eid.clone(),
+                phase: "recon".into(),
+                subject: format!("s{i}"),
+                predicate: "p".into(),
+                object: "o".into(),
+                confidence: 0.5,
+                source_tool: None,
+                source_finding_id: None,
+            },
+        )
+        .unwrap();
+    }
+
+    let capped = db::recall_knowledge(&conn, &eid, None, 3).unwrap();
+    assert_eq!(capped.len(), 3);
 }
 
 #[test]

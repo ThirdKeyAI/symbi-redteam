@@ -418,3 +418,22 @@ permit (
 when {
     resource.tool_name == "compare_engagements"
 };
+
+// ---------------------------------------------------------------------------
+// KNOWLEDGE TOOLS -- REFLECTOR-AUTHORED LESSONS
+//
+// recall_knowledge is safe at LOW risk for every phase agent: it's a
+// read-only lookup against reflector-authored triples, scoped by
+// engagement_id. store_knowledge is the reflector's alone and is gated
+// in policies/reflector.cedar with a defensive forbid, so it's deliberately
+// not permitted anywhere else here.
+// ---------------------------------------------------------------------------
+
+permit (
+    principal,
+    action == PenTest::Action::"execute_tool",
+    resource
+)
+when {
+    resource.tool_name == "recall_knowledge"
+};

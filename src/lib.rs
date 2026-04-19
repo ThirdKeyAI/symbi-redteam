@@ -6,5 +6,6 @@ pub mod vuln_tools;
 pub mod exploit_tools;
 pub mod postexploit_tools;
 pub mod evidence_tools;
+pub mod knowledge_tools;
 pub mod reporting;
 pub mod approvals;

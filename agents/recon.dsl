@@ -22,10 +22,11 @@ metadata {
 }
 
 agent recon {
-    capabilities: [nmap_scan, whois_lookup, dns_enumerate, whatweb_scan, amass_enum, parse_nmap_xml, lookup_cve, store_finding, store_tool_run, capture_evidence]
+    capabilities: [nmap_scan, whois_lookup, dns_enumerate, whatweb_scan, amass_enum, parse_nmap_xml, lookup_cve, store_finding, store_tool_run, capture_evidence, recall_knowledge]
 
     policy recon_authorization {
         allow: scan(target)
+        allow: recall_knowledge(engagement_id)
         deny: scan(target_out_of_scope)
         audit: all_operations
     }
@@ -35,6 +36,11 @@ agent recon {
         let request = parse_json(input);
         let engagement_id = request.engagement_id;
         let targets = request.targets;
+
+        // Pull any prior lessons the reflector left for this engagement.
+        // On a fresh engagement this returns zero triples; on a retest or
+        // resumed run it biases the scan plan toward known-interesting targets.
+        let prior_lessons = recall_knowledge(engagement_id, limit: 5);
 
         // Phase 1: Network discovery -- nmap service scan on each target
         // Use -sT (TCP connect) with service version detection

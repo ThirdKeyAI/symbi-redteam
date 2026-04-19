@@ -61,9 +61,30 @@ CREATE TABLE IF NOT EXISTS retests (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Reflector-authored knowledge triples. Written only by the reflector agent
+-- via store_knowledge; read by phase agents via recall_knowledge at phase
+-- entry. Subject-predicate-object form is deliberate: it forces concrete,
+-- indexable claims ("smb_null_session, enabled_on, target_10_0_2_15") rather
+-- than freeform narrative, which stays short enough to inject into the next
+-- phase's prompt without bloating tokens.
+CREATE TABLE IF NOT EXISTS knowledge (
+    id TEXT PRIMARY KEY,
+    engagement_id TEXT NOT NULL REFERENCES engagements(id),
+    phase TEXT NOT NULL CHECK(phase IN ('recon','enum','vuln','exploit','post_exploit','reporting')),
+    subject TEXT NOT NULL,
+    predicate TEXT NOT NULL,
+    object TEXT NOT NULL,
+    confidence REAL NOT NULL DEFAULT 0.8 CHECK(confidence >= 0.0 AND confidence <= 1.0),
+    source_tool TEXT,
+    source_finding_id TEXT REFERENCES findings(id),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_findings_engagement ON findings(engagement_id);
 CREATE INDEX IF NOT EXISTS idx_findings_severity ON findings(severity);
 CREATE INDEX IF NOT EXISTS idx_findings_phase ON findings(phase);
 CREATE INDEX IF NOT EXISTS idx_tool_runs_engagement ON tool_runs(engagement_id);
 CREATE INDEX IF NOT EXISTS idx_tool_runs_tool ON tool_runs(tool);
 CREATE INDEX IF NOT EXISTS idx_retests_engagement ON retests(engagement_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_engagement ON knowledge(engagement_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_phase ON knowledge(engagement_id, phase);
