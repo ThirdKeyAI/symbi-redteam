@@ -508,6 +508,117 @@ pub fn get_retests(conn: &Connection, engagement_id: &str) -> SqlResult<Vec<Rete
 }
 
 // =============================================================================
+// Knowledge
+//
+// Reflector-authored lessons from completed phases. Subject-predicate-object
+// triples deliberately — freeform notes would be easier for an LLM to
+// produce but harder for the *next* phase to act on. The triple shape means
+// the agent that recalls it gets structured, indexable claims.
+// =============================================================================
+
+/// A row from the `knowledge` table.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Knowledge {
+    pub id: String,
+    pub engagement_id: String,
+    pub phase: String,
+    pub subject: String,
+    pub predicate: String,
+    pub object: String,
+    pub confidence: f64,
+    pub source_tool: Option<String>,
+    pub source_finding_id: Option<String>,
+    pub created_at: Option<String>,
+}
+
+/// Input struct for a new knowledge triple (excludes auto-generated fields).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewKnowledge {
+    pub engagement_id: String,
+    pub phase: String,
+    pub subject: String,
+    pub predicate: String,
+    pub object: String,
+    pub confidence: f64,
+    pub source_tool: Option<String>,
+    pub source_finding_id: Option<String>,
+}
+
+/// Insert a knowledge triple. Generates a UUID v4 primary key. No dedup —
+/// if the reflector proposes the same triple twice, it lands twice.
+/// Duplicates are cheap and make the reflector's behaviour auditable.
+pub fn insert_knowledge(conn: &Connection, k: &NewKnowledge) -> SqlResult<String> {
+    let id = Uuid::new_v4().to_string();
+
+    conn.execute(
+        "INSERT INTO knowledge
+            (id, engagement_id, phase, subject, predicate, object,
+             confidence, source_tool, source_finding_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![
+            id,
+            k.engagement_id,
+            k.phase,
+            k.subject,
+            k.predicate,
+            k.object,
+            k.confidence,
+            k.source_tool,
+            k.source_finding_id,
+        ],
+    )?;
+
+    Ok(id)
+}
+
+/// Recall knowledge triples for an engagement, optionally scoped to a phase
+/// of interest. Most recent first; caller passes `limit` to cap prompt size.
+pub fn recall_knowledge(
+    conn: &Connection,
+    engagement_id: &str,
+    phase: Option<&str>,
+    limit: usize,
+) -> SqlResult<Vec<Knowledge>> {
+    let mut sql = String::from(
+        "SELECT id, engagement_id, phase, subject, predicate, object,
+                confidence, source_tool, source_finding_id, created_at
+         FROM knowledge WHERE engagement_id = ?",
+    );
+
+    let mut bind_values: Vec<Box<dyn rusqlite::types::ToSql>> =
+        vec![Box::new(engagement_id.to_owned())];
+
+    if let Some(p) = phase {
+        sql.push_str(" AND phase = ?");
+        bind_values.push(Box::new(p.to_owned()));
+    }
+
+    sql.push_str(" ORDER BY created_at DESC LIMIT ?");
+    bind_values.push(Box::new(limit as i64));
+
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> =
+        bind_values.iter().map(|b| b.as_ref()).collect();
+
+    let mut stmt = conn.prepare(&sql)?;
+    let rows = stmt.query_map(params_refs.as_slice(), |row| {
+        Ok(Knowledge {
+            id: row.get(0)?,
+            engagement_id: row.get(1)?,
+            phase: row.get(2)?,
+            subject: row.get(3)?,
+            predicate: row.get(4)?,
+            object: row.get(5)?,
+            confidence: row.get(6)?,
+            source_tool: row.get(7)?,
+            source_finding_id: row.get(8)?,
+            created_at: row.get(9)?,
+        })
+    })?;
+
+    rows.collect()
+}
+
+// =============================================================================
 // Engagement Summary
 // =============================================================================
 

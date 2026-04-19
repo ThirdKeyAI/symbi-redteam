@@ -21,10 +21,11 @@ metadata {
 }
 
 agent reporter {
-    capabilities: [generate_report, compare_engagements, query_findings, search_similar_findings, store_tool_run, capture_evidence]
+    capabilities: [generate_report, compare_engagements, query_findings, search_similar_findings, store_tool_run, capture_evidence, recall_knowledge]
 
     policy report_authorization {
         allow: report(engagement)
+        allow: recall_knowledge(engagement_id)
         audit: all_operations
     }
 
@@ -36,6 +37,11 @@ agent reporter {
 
         // Query all findings
         let findings = query_findings(engagement_id);
+
+        // Pull the full reflector knowledge trail -- lessons per phase -- so
+        // reports can include a "what the operator learned" appendix next to
+        // raw findings. Numbers come from findings; narrative comes from here.
+        let lessons = recall_knowledge(engagement_id, limit: 50);
 
         // Generate requested report types
         let executive_report = generate_report(engagement_id, report_type: "executive", output_format: "markdown");

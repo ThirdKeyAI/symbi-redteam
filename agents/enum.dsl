@@ -21,10 +21,11 @@ metadata {
 }
 
 agent enum {
-    capabilities: [nikto_scan, gobuster_scan, enum4linux_scan, smbclient_access, snmpwalk_enum, store_finding, store_tool_run, capture_evidence]
+    capabilities: [nikto_scan, gobuster_scan, enum4linux_scan, smbclient_access, snmpwalk_enum, store_finding, store_tool_run, capture_evidence, recall_knowledge]
 
     policy enum_authorization {
         allow: enumerate(target)
+        allow: recall_knowledge(engagement_id)
         deny: enumerate(target_out_of_scope)
         require: recon_phase_complete
         audit: all_operations
@@ -35,6 +36,10 @@ agent enum {
         let engagement_id = request.engagement_id;
         let targets = request.targets;
         let services = request.services;
+
+        // Pull reflector lessons (especially recon-phase triples) so this
+        // agent prioritises services the previous phase flagged.
+        let prior_lessons = recall_knowledge(engagement_id, phase: "recon", limit: 5);
 
         // Web enumeration: nikto + gobuster on HTTP services
         let nikto_results = nikto_scan(web_target, tuning: 1);
