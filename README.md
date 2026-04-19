@@ -17,7 +17,7 @@ Penetration testing firms face four persistent problems:
 
 ## The Solution: ORGA-Governed Multi-Agent Pen Testing
 
-Seven specialized agents execute a PTES-methodology pen test. Every tool invocation passes through Symbiont's ORGA (Observe-Reason-Gate-Act) loop with Cedar policy enforcement:
+Eight specialized agents execute a PTES-methodology pen test. Every tool invocation passes through Symbiont's ORGA (Observe-Reason-Gate-Act) loop with Cedar policy enforcement:
 
 ```
 engagement-controller
@@ -26,8 +26,11 @@ engagement-controller
 ├── vuln-assess agent   → nmap NSE, nuclei, sqlmap (detect), searchsploit
 ├── exploit agent       → hydra, metasploit, sqlmap (exploit)  [human-gated]
 ├── post-exploit agent  → impacket, pypykatz, chisel, ligolo   [human-gated]
+├── reflector agent     → distils phase findings into knowledge triples
 └── reporter agent      → executive, technical, remediation reports
 ```
+
+Between phases the controller invokes the bounded **reflector** agent, which reads the phase's findings and writes subject-predicate-object lessons to a knowledge store. The next phase's agent pulls those lessons via `recall_knowledge` before planning, so learning flows forward across the engagement without widening any phase agent's tool surface. Cedar's `reflector.cedar` uses a defensive `forbid ... unless` whitelist so the reflector can only touch `store_knowledge`, `recall_knowledge`, and `query_findings` — every scan/exploit action is rejected at the gate.
 
 **The critical insight:** The Gate operates outside LLM influence. An AI plans Metasploit usage; a human approves each exploitation attempt. Cedar policies cannot be bypassed through prompt injection, social engineering, or creative reasoning.
 
@@ -48,7 +51,7 @@ engagement-controller
    │          ToolClad Manifests (19 .clad.toml)         │
    │  Typed args · MCP schema · Evidence · Cedar metadata │
    ├─────────────────────────────────────────────────────┤
-   │              MCP Tool Layer (31 tools)              │
+   │              MCP Tool Layer (35 tools)              │
    │  Rust implementations · Cedar-gated · Audit-logged  │
    ├─────────────────────────────────────────────────────┤
    │              Shell Wrappers (19 scripts)            │
@@ -72,7 +75,7 @@ engagement-controller
 
 ## Cedar Policy Model
 
-Seven policy files enforce governance at every level:
+Eight policy files enforce governance at every level:
 
 | Policy | Purpose |
 |--------|---------|
@@ -83,12 +86,15 @@ Seven policy files enforce governance at every level:
 | `escalation.cedar` | Human approval with time-limited expiry |
 | `evidence.cedar` | Evidence chain integrity requirements |
 | `time-bounds.cedar` | Engagement window enforcement |
+| `reflector.cedar` | Bounds the reflector to `store_knowledge` / `recall_knowledge` / `query_findings` via defensive `forbid ... unless` |
 
 ## Data Layer
 
-**SQLite** stores structured engagement data: findings, tool runs, retests.
+**SQLite** stores structured engagement data: findings, tool runs, retests, and reflector-authored knowledge triples.
 
 **LanceDB** provides semantic search across findings for cross-tool correlation and retest comparison. A service that moved from port 8080 to 8443 still gets matched. A finding described differently by a different scanner still gets correlated.
+
+**Knowledge store** — a `knowledge` table of subject-predicate-object triples written exclusively by the reflector (e.g. `(smb_null_session, enabled_on, 10.0.2.15:445, confidence=0.9)`). Phase agents read it via `recall_knowledge` at phase entry to bias their plan. The triple shape keeps lessons concrete and small enough to inject into the next phase's prompt without token bloat. Pattern borrowed from [symbiont-karpathy-loop](https://github.com/ThirdKeyAI/symbiont-karpathy-loop).
 
 **Evidence store** archives all tool outputs with SHA-256 integrity hashing, creating a tamper-evident chain from discovery through reporting.
 
@@ -150,7 +156,7 @@ docker run --rm --network host --privileged \
 # Health check
 curl -s http://localhost:9080/api/v1/health
 
-# List loaded agents (7 agents from agents/ directory)
+# List loaded agents (8 agents from agents/ directory)
 curl -s -H "Authorization: Bearer your-api-token" \
   http://localhost:9080/api/v1/agents
 
@@ -308,17 +314,18 @@ docker run --rm --network host --privileged \
 
 ```
 symbi-redteam/
-├── agents/                    # 7 Symbiont DSL agent definitions
+├── agents/                    # 8 Symbiont DSL agent definitions
 │   ├── engagement-controller.dsl  # Orchestrator
 │   ├── recon.dsl                  # Reconnaissance
 │   ├── enum.dsl                   # Enumeration
 │   ├── vuln-assess.dsl            # Vulnerability assessment
 │   ├── exploit.dsl                # Exploitation (human-gated)
 │   ├── post-exploit.dsl           # Post-exploitation (human-gated)
+│   ├── reflector.dsl              # Post-phase lesson extractor (bounded)
 │   └── reporter.dsl              # Report generation
 ├── tools/                     # 19 ToolClad manifests (.clad.toml)
 ├── toolclad.toml              # Project-level custom type definitions
-├── policies/                  # 7 Cedar policy files
+├── policies/                  # 8 Cedar policy files
 ├── src/                       # Rust MCP tool definitions
 │   ├── recon_tools.rs            # 5 recon tools + parse + CVE lookup
 │   ├── enum_tools.rs             # 5 enumeration tools
@@ -326,6 +333,7 @@ symbi-redteam/
 │   ├── exploit_tools.rs          # 4 exploitation tools
 │   ├── postexploit_tools.rs      # 4 post-exploitation tools
 │   ├── evidence_tools.rs         # 5 evidence management tools
+│   ├── knowledge_tools.rs        # store_knowledge + recall_knowledge
 │   ├── reporting.rs              # 4 reporting tools
 │   └── db.rs                     # SQLite + LanceDB layer
 ├── scripts/
@@ -377,6 +385,8 @@ symbi tools list
 
 **Hierarchical multi-agent** — The engagement controller delegates to phase agents via `ask()`. Only 2 agents are active concurrently (controller + current phase). This maps naturally to PTES methodology and keeps Cedar policies scoped per phase.
 
+**Bounded reflector** — Cross-phase learning is handled by a single-purpose reflector agent that can only write to the knowledge store. Separating "who learns" from "who acts" means accumulating procedural knowledge never widens any phase agent's tool surface. The `forbid ... unless` Cedar pattern catches future accidental widening.
+
 **Cedar over inline checks** — Cedar policies are formally verifiable, updatable without code changes, and evaluated outside LLM influence. The Gate cannot be prompt-injected.
 
 **SQLite + LanceDB** — Structured data in SQLite for queries, embeddings in LanceDB for semantic search. Single LanceDB collection with type discriminator avoids runtime changes.
@@ -396,6 +406,7 @@ symbi tools list
 | Audit trail | Manual notes | Cryptographic, tamper-evident |
 | Report generation | 40% of engagement time | Automated from evidence DB |
 | Retest comparison | Manual analyst work | Semantic matching + delta reports |
+| Cross-phase learning | Tester memory | Reflector-written knowledge triples, recalled by next phase |
 
 ## License
 
