@@ -20,10 +20,11 @@ metadata {
 }
 
 agent vuln_assess {
-    capabilities: [nmap_vuln_script, nuclei_scan, sqlmap_detect, searchsploit_query, store_finding, store_tool_run, capture_evidence]
+    capabilities: [nmap_vuln_script, nuclei_scan, sqlmap_detect, searchsploit_query, store_finding, store_tool_run, capture_evidence, recall_knowledge]
 
     policy vuln_authorization {
         allow: assess(target)
+        allow: recall_knowledge(engagement_id)
         deny: assess(production_target)
         require: enum_phase_complete
         audit: all_operations
@@ -35,6 +36,10 @@ agent vuln_assess {
         let targets = request.targets;
         let services = request.services;
         let web_apps = request.web_apps;
+
+        // Pull recon + enum lessons so template selection can skip templates
+        // for services the reflector already reported as unreachable/uninteresting.
+        let prior_lessons = recall_knowledge(engagement_id, limit: 10);
 
         // Nmap NSE vulnerability scripts on discovered services
         let nmap_vuln_results = nmap_vuln_script(target, port_range, scripts: "vuln");

@@ -1,6 +1,6 @@
 use symbi_redteam::{
     recon_tools, enum_tools, vuln_tools, exploit_tools,
-    postexploit_tools, evidence_tools, reporting,
+    postexploit_tools, evidence_tools, knowledge_tools, reporting,
 };
 
 // =============================================================================
@@ -50,15 +50,22 @@ fn reporting_tools_registers_4() {
 }
 
 #[test]
-fn total_tools_is_33() {
+fn knowledge_tools_registers_2() {
+    let tools = knowledge_tools::register_tools();
+    assert_eq!(tools.len(), 2, "knowledge should register 2 tools");
+}
+
+#[test]
+fn total_tools_is_35() {
     let total = recon_tools::register_tools().len()
         + enum_tools::register_tools().len()
         + vuln_tools::register_tools().len()
         + exploit_tools::register_tools().len()
         + postexploit_tools::register_tools().len()
         + evidence_tools::register_tools().len()
-        + reporting::register_tools().len();
-    assert_eq!(total, 33, "total tools should be 33");
+        + reporting::register_tools().len()
+        + knowledge_tools::register_tools().len();
+    assert_eq!(total, 35, "total tools should be 35");
 }
 
 // =============================================================================
@@ -75,6 +82,7 @@ fn all_tool_names_are_unique() {
     for tool in postexploit_tools::register_tools() { names.push(tool.name); }
     for tool in evidence_tools::register_tools() { names.push(tool.name); }
     for tool in reporting::register_tools() { names.push(tool.name); }
+    for tool in knowledge_tools::register_tools() { names.push(tool.name); }
 
     let count = names.len();
     names.sort();
@@ -96,6 +104,7 @@ fn all_gated_tools_have_cedar_resource() {
         postexploit_tools::register_tools(),
         evidence_tools::register_tools(),
         reporting::register_tools(),
+        knowledge_tools::register_tools(),
     ].into_iter().flatten().collect();
 
     for tool in &all_tools {
@@ -169,6 +178,34 @@ fn parse_nmap_xml_has_no_policy_gate() {
 }
 
 #[test]
+fn knowledge_tools_wired_to_knowledge_store() {
+    let tools = knowledge_tools::register_tools();
+    let names: Vec<&str> = tools.iter().map(|t| t.name.as_str()).collect();
+    assert!(names.contains(&"store_knowledge"));
+    assert!(names.contains(&"recall_knowledge"));
+
+    for tool in &tools {
+        assert_eq!(
+            tool.cedar_resource.as_deref(),
+            Some("PenTest::KnowledgeStore"),
+            "knowledge tool '{}' should be gated on PenTest::KnowledgeStore",
+            tool.name,
+        );
+        assert!(tool.policy_gate, "knowledge tool '{}' must be policy-gated", tool.name);
+        assert!(
+            !tool.human_gate_required,
+            "knowledge tool '{}' must not require human gate (reflector runs unattended)",
+            tool.name,
+        );
+    }
+
+    let store = tools.iter().find(|t| t.name == "store_knowledge").unwrap();
+    assert_eq!(store.cedar_actions, vec!["PenTest::Action::store_knowledge"]);
+    let recall = tools.iter().find(|t| t.name == "recall_knowledge").unwrap();
+    assert_eq!(recall.cedar_actions, vec!["PenTest::Action::recall_knowledge"]);
+}
+
+#[test]
 fn all_tools_have_descriptions() {
     let all_tools: Vec<_> = [
         recon_tools::register_tools(),
@@ -178,6 +215,7 @@ fn all_tools_have_descriptions() {
         postexploit_tools::register_tools(),
         evidence_tools::register_tools(),
         reporting::register_tools(),
+        knowledge_tools::register_tools(),
     ].into_iter().flatten().collect();
 
     for tool in &all_tools {

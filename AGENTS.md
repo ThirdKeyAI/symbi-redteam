@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository is a governed autonomous penetration testing platform using the Symbiont trust stack. Seven hierarchical agents orchestrate a full PTES-methodology pen test with Cedar policy enforcement, risk-tiered tool authorization, and cryptographic audit trails.
+This repository is a governed autonomous penetration testing platform using the Symbiont trust stack. Eight hierarchical agents (six phase agents, one orchestrator, one reflector) run a PTES-methodology pen test with Cedar policy enforcement, risk-tiered tool authorization, and cryptographic audit trails. Between phases a bounded reflector agent distils lessons into a knowledge store the next phase reads — a pattern borrowed from `symbiont-karpathy-loop`.
 
 ## Architecture
 
@@ -10,8 +10,8 @@ The system has five layers:
 
 1. **Offensive toolchain** (Kali): nmap, nikto, nuclei, sqlmap, hydra, metasploit, impacket, pypykatz, chisel, ligolo, gobuster, enum4linux, smbclient, snmpwalk, amass, whatweb, whois, searchsploit. Dumb tools with no concept of governance.
 2. **Wrapper scripts** (`scripts/tool-wrappers/`): 19 sandboxed wrappers. Sanitize arguments, capture output, enforce timeouts, return structured JSON. Defense in depth.
-3. **MCP tools** (`src/*.rs`): 31 Rust-defined tools across 7 modules. Each tool call is intercepted by the ORGA Gate for Cedar policy evaluation.
-4. **Agent DSL** (`agents/`): 7 Symbiont DSL agents in a hierarchical tree. The engagement controller orchestrates 6 phase agents via `ask()`.
+3. **MCP tools** (`src/*.rs`): 33 Rust-defined tools across 8 modules. Each tool call is intercepted by the ORGA Gate for Cedar policy evaluation.
+4. **Agent DSL** (`agents/`): 8 Symbiont DSL agents in a hierarchical tree. The engagement controller orchestrates 6 phase agents via `ask()`, and invokes the bounded reflector after each phase.
 5. **Symbiont runtime**: Runs ORGA loops, evaluates Cedar policies, manages inter-agent communication, maintains cryptographic audit trail.
 
 ## Agent Hierarchy
@@ -19,12 +19,25 @@ The system has five layers:
 ```
 engagement-controller.dsl
 ├── ask(recon)          — Low risk, auto-allowed
+├── ask(reflector)      — Post-phase; store_knowledge only
 ├── ask(enum)           — Medium risk, rate-limited
+├── ask(reflector)      — Post-phase; store_knowledge only
 ├── ask(vuln-assess)    — Medium-high risk, non-prod only
+├── ask(reflector)      — Post-phase; store_knowledge only
 ├── ask(exploit)        — High risk, human approval required
+├── ask(reflector)      — Post-phase; store_knowledge only
 ├── ask(post-exploit)   — Highest risk, approval + scope revalidation
+├── ask(reflector)      — Post-phase; store_knowledge only
 └── ask(reporter)       — Report generation, always allowed
 ```
+
+The reflector pattern (borrowed from `symbiont-karpathy-loop`) runs after
+each phase. It reads the phase's findings and writes subject-predicate-object
+lessons to the `knowledge` table. The next phase's agent pulls those lessons
+via `recall_knowledge` before planning. Cedar's `reflector.cedar` bounds the
+reflector with a defensive `forbid unless` so it can only call
+`store_knowledge`, `recall_knowledge`, and `query_findings` — every scan,
+enum, exploit, and post-exploit tool is rejected at the gate.
 
 ## Key Files
 
@@ -37,12 +50,14 @@ engagement-controller.dsl
 | `agents/exploit.dsl` | Exploitation | Changing exploit selection or approval workflow |
 | `agents/post-exploit.dsl` | Post-exploitation | Changing lateral movement strategies |
 | `agents/reporter.dsl` | Report generation | Changing report types or formats |
+| `agents/reflector.dsl` | Post-phase lesson extractor | Changing reflector prompt or triple shape |
 | `policies/scope.cedar` | Target scope | Adding/removing allowed CIDRs |
 | `policies/tool-authorization.cedar` | Tool risk tiers | Changing which tools need which authorization |
 | `policies/phase-gates.cedar` | Phase transitions | Changing methodology requirements |
 | `policies/rate-limits.cedar` | Frequency limits | Adjusting per-target and global limits |
 | `policies/escalation.cedar` | Human approval | Changing approval expiry or requirements |
 | `policies/evidence.cedar` | Evidence rules | Changing evidence chain requirements |
+| `policies/reflector.cedar` | Reflector bounds | Changing what tools the reflector can call |
 | `policies/time-bounds.cedar` | Engagement window | Changing time restrictions |
 | `src/recon_tools.rs` | 7 recon MCP tools | Adding recon tools or changing schemas |
 | `src/enum_tools.rs` | 5 enum MCP tools | Adding enum tools |
@@ -50,6 +65,7 @@ engagement-controller.dsl
 | `src/exploit_tools.rs` | 4 exploit MCP tools | Adding exploit tools |
 | `src/postexploit_tools.rs` | 4 post-exploit MCP tools | Adding post-exploit tools |
 | `src/evidence_tools.rs` | 5 evidence MCP tools | Changing evidence storage |
+| `src/knowledge_tools.rs` | 2 knowledge MCP tools | Changing reflector/recall contract |
 | `src/reporting.rs` | 4 reporting MCP tools | Changing report generation |
 | `src/db.rs` | Database layer | Schema changes, new queries |
 | `scope/scope.toml` | Engagement scope | Changing target definitions |
@@ -91,7 +107,7 @@ Edit `scope/scope.toml` to add the target definition, then update `policies/scop
 ### Generate a retest comparison
 The reporter agent's `compare_engagements` tool takes a current and baseline engagement ID and produces a delta report showing remediated, persistent, regressed, and new findings.
 
-## Registered Tools (31 total)
+## Registered Tools (33 total)
 
 ### Recon Tools (7)
 | Tool | Wrapper | Cedar Resource |
@@ -153,3 +169,9 @@ The reporter agent's `compare_engagements` tool takes a current and baseline eng
 | `compare_engagements` | `PenTest::ReportGenerator` |
 | `create_engagement` | `PenTest::EvidenceStore` |
 | `manage_engagement` | `PenTest::EvidenceStore` |
+
+### Knowledge Tools (2)
+| Tool | Cedar Resource | Who may call it |
+|---|---|---|
+| `store_knowledge` | `PenTest::KnowledgeStore` | reflector only (enforced by `reflector.cedar`) |
+| `recall_knowledge` | `PenTest::KnowledgeStore` | every phase agent (read-only) |

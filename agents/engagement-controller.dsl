@@ -12,6 +12,13 @@
 //   5. post-exploit-- Lateral movement (HUMAN APPROVAL + SCOPE REVALIDATION)
 //   6. reporter    -- Report generation (executive, technical, remediation)
 //
+// After each phase completes the controller invokes the reflector agent
+// (policies/reflector.cedar), which reads the phase's findings and writes
+// subject-predicate-object lessons into the knowledge store. The next
+// phase's agent pulls those lessons via recall_knowledge before planning,
+// so learning flows forward across the engagement without any agent
+// mutating another agent's tools or policy.
+//
 // Phase transition rules:
 //   - recon -> enum: requires at least 1 recon finding
 //   - enum -> vuln: requires at least 1 enumeration finding
@@ -53,25 +60,31 @@ agent engagement_controller {
         // Delegate to recon agent with target list
         // Recon discovers hosts, services, and initial CVEs
         let recon_result = invoke_agent("recon", engagement_id, targets);
+        invoke_agent("reflector", engagement_id, phase: "recon");
 
         // Phase 2: Enumeration (requires recon findings)
         // Delegate to enum agent with discovered services
         let enum_result = invoke_agent("enum", engagement_id, recon_result.services);
+        invoke_agent("reflector", engagement_id, phase: "enum");
 
         // Phase 3: Vulnerability Assessment (requires enum findings)
         // Delegate to vuln-assess agent with enumerated targets
         let vuln_result = invoke_agent("vuln-assess", engagement_id, enum_result.targets);
+        invoke_agent("reflector", engagement_id, phase: "vuln");
 
         // Phase 4: Exploitation (requires exploitable vulns + HUMAN APPROVAL)
         // Delegate to exploit agent -- operator must approve each exploit
         let exploit_result = invoke_agent("exploit", engagement_id, vuln_result.vulnerabilities);
+        invoke_agent("reflector", engagement_id, phase: "exploit");
 
         // Phase 5: Post-Exploitation (requires successful exploit + HUMAN APPROVAL)
         // Delegate to post-exploit agent -- operator approves + scope revalidation
         let post_exploit_result = invoke_agent("post-exploit", engagement_id, exploit_result.sessions);
+        invoke_agent("reflector", engagement_id, phase: "post_exploit");
 
         // Phase 6: Reporting (always allowed)
-        // Generate executive, technical, and remediation reports
+        // Generate executive, technical, and remediation reports; reporter
+        // reads the accumulated reflector knowledge for the narrative sections.
         let report_result = invoke_agent("reporter", engagement_id, report_types);
 
         // Finalize engagement
