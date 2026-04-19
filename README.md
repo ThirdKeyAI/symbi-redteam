@@ -161,54 +161,50 @@ Between phases the controller invokes a bounded **reflector** that reads the pha
 
 ## Architecture
 
-```text
-┌──────────────────────────────────────────────────────────────┐
-│                    Engagement Controller                     │
-│  Maintains state, enforces methodology, orchestrates phases   │
-└──────┬──────────┬──────────┬──────────┬──────────┬───────────┘
-       │          │          │          │          │
- ┌─────▼────┐ ┌───▼────┐ ┌───▼────┐ ┌───▼────┐ ┌───▼──────┐
- │  Recon   │ │  Enum  │ │  Vuln  │ │Validate│ │ Reporter │
- │  Agent   │ │ Agent  │ │ Agent  │ │ Agent  │ │  Agent   │
- └─────┬────┘ └───┬────┘ └───┬────┘ └───┬────┘ └───┬──────┘
-       │          │          │          │          │
-       └──────────┴────┬─────┴──────────┴──────────┘
-                       │   (Exploit / Post-Exploit agents are human-gated)
-                ┌──────▼───────┐
-                │   Reflector  │
-                │ bounded memory│
-                └──────┬───────┘
-                       │
-┌──────────────────────▼───────────────────────────────────────┐
-│                      Symbiont Runtime                        │
-│                                                              │
-│  ORGA loop                                                   │
-│  Cedar Gate                                                  │
-│  ToolClad contracts                                          │
-│  MCP tool registration                                       │
-│  sandbox and timeout controls                                │
-│  audit journal                                               │
-│  approval routing                                            │
-│  telemetry                                                   │
-└──────────────────────┬───────────────────────────────────────┘
-                       │
-┌──────────────────────▼───────────────────────────────────────┐
-│                       Tool Layer                             │
-│                                                              │
-│  typed arguments                                             │
-│  scope validation                                            │
-│  rate limits                                                 │
-│  JSON output                                                 │
-│  evidence capture                                            │
-│  SHA-256 integrity metadata                                  │
-└──────────────────────┬───────────────────────────────────────┘
-                       │
-┌──────────────────────▼───────────────────────────────────────┐
-│                  Authorized Security Toolchain (Kali)        │
-│                                                              │
-│  nmap · nikto · nuclei · sqlmap · hydra · metasploit         │
-│  impacket · pypykatz · chisel · ligolo · gobuster · ...      │
-└──────────────────────────────────────────────────────────────┘
+### Orchestration
+
+```mermaid
+graph LR
+    EC[engagement-controller]
+    Recon[recon]
+    Enum[enum]
+    Vuln[vuln-assess]
+    Val[validate<br/>read-only]
+    Exp[exploit<br/>human-gated]
+    PE[post-exploit<br/>human-gated]
+    Rep[reporter]
+    R((reflector))
+    KS[(knowledge<br/>store)]
+
+    EC --> Recon --> Enum --> Vuln --> Val --> Exp --> PE --> Rep
+
+    Recon -. phase done .-> R
+    Enum  -. phase done .-> R
+    Vuln  -. phase done .-> R
+    Exp   -. phase done .-> R
+    PE    -. phase done .-> R
+
+    R -- store_knowledge --> KS
+    KS -. recall_knowledge .-> Enum
+    KS -. recall_knowledge .-> Vuln
+    KS -. recall_knowledge .-> Exp
+    KS -. recall_knowledge .-> PE
+    KS -. recall_knowledge .-> Rep
+```
+
+The engagement controller drives phases left-to-right. The read-only **validate** agent adjudicates findings (`verified` / `false_positive`) after vulnerability assessment and again before reporting — it is the only principal allowed to flip those flags. After each phase the reflector reads the phase's findings and writes subject-predicate-object lessons to the knowledge store; the next phase pulls those lessons via `recall_knowledge` before planning. Cedar forbids the reflector from calling anything other than `store_knowledge` / `recall_knowledge` / `query_findings`.
+
+### Layer stack
+
+```mermaid
+graph TB
+    A["Agent DSL<br/>engagement-controller · 7 phase agents · reflector"]
+    M["ToolClad Manifests (19 .clad.toml)<br/>Typed args · MCP schema · Cedar metadata"]
+    T["MCP Tool Layer (37 tools)<br/>Rust implementations · Cedar-gated · Audit-logged"]
+    W["Shell Wrappers (19 scripts)<br/>Arg validation · Timeout · JSON output · Defense"]
+    K["Offensive Toolchain (Kali)<br/>nmap · nikto · nuclei · sqlmap · hydra · metasploit<br/>impacket · pypykatz · chisel · ligolo · gobuster"]
+
+    A --> M --> T --> W --> K
 ```
 
 ---
