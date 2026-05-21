@@ -26,9 +26,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler libprotobuf-dev cmake pkg-config libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install symbi from crates.io with required features
-# v1.10.0 includes the HTTP Input tool-execution fixes
-RUN cargo install symbi@1.10.0 --locked \
+# Install symbi from crates.io with required features.
+# v1.14.1 is the current published release — v1.14.0 was yanked because its
+# release workflow failed, and v1.10.0 was yanked in the same cleanup. v1.14.1
+# bundles the security-audit response (fail-closed default policy gate, JWT
+# algorithm allowlist, hardened invis-strip) on top of the HTTP Input fixes.
+RUN cargo install symbi@1.14.1 --locked \
     --features "native-sandbox,interactive"
 
 # --- Stage 2: Runtime image with Kali toolchain ---
