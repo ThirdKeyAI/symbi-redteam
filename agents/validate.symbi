@@ -1,0 +1,55 @@
+// Validation phase agent -- verify or reject findings before reporting
+//
+// The validate agent is the sole principal authorised to flip the
+// `verified` and `false_positive` flags on findings. policies/validation.cedar
+// structurally denies finding-creation tools to this agent, so it cannot
+// fabricate findings — only adjudicate ones the prior phases produced.
+//
+// ORGA flow:
+//   OBSERVE: Read findings produced by vuln-assess (and exploit / post-exploit
+//            once those phases complete) along with their evidence artifacts.
+//   REASON:  For each finding, decide one of:
+//              - verified       (evidence supports the finding)
+//              - false_positive (evidence contradicts the finding)
+//              - undetermined   (no decision; rationale recorded as a tool run)
+//   GATE:    Cedar evaluates -- validate may call verify_finding /
+//            mark_false_positive; no other agent may. validate may NOT call
+//            store_finding.
+//   ACT:     Record the verdict via verify_finding or mark_false_positive,
+//            including a rationale that cites evidence_path or query_findings
+//            output.
+//
+// The unverified_critical_high_count gate in evidence.cedar prevents report
+// generation until every critical/high finding has been adjudicated, so this
+// agent must run between vuln-assess and reporter.
+
+metadata {
+    version: "1.0.0",
+    author: "thirdkey-ai",
+    description: "Finding verification agent -- read-only, no finding creation"
+}
+
+agent validate {
+    capabilities: [verify_finding, mark_false_positive, query_findings, search_similar_findings, store_tool_run, capture_evidence]
+
+    policy validate_authorization {
+        allow: verify(finding)
+        deny: create(finding)
+        audit: all_operations
+    }
+
+    function execute_validate(input: String) -> Result<String> {
+        let request = parse_json(input);
+        let engagement_id = request.engagement_id;
+
+        // Pull the cohort of findings that still need adjudication.
+        let pending = query_findings(engagement_id);
+
+        // For each pending finding, re-examine its evidence and decide.
+        // The runtime invokes the LLM here; verify_finding / mark_false_positive
+        // is the only mutation surface available.
+        let verdicts = adjudicate_findings(pending);
+
+        return json_encode(verdicts);
+    }
+}

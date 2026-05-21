@@ -314,15 +314,16 @@ docker run --rm --network host --privileged \
 
 ```
 symbi-redteam/
-├── agents/                    # 8 Symbiont DSL agent definitions
-│   ├── engagement-controller.dsl  # Orchestrator
-│   ├── recon.dsl                  # Reconnaissance
-│   ├── enum.dsl                   # Enumeration
-│   ├── vuln-assess.dsl            # Vulnerability assessment
-│   ├── exploit.dsl                # Exploitation (human-gated)
-│   ├── post-exploit.dsl           # Post-exploitation (human-gated)
-│   ├── reflector.dsl              # Post-phase lesson extractor (bounded)
-│   └── reporter.dsl              # Report generation
+├── agents/                    # Symbiont agent definitions (.symbi)
+│   ├── engagement-controller.symbi  # Orchestrator
+│   ├── recon.symbi                  # Reconnaissance
+│   ├── enum.symbi                   # Enumeration
+│   ├── vuln-assess.symbi            # Vulnerability assessment
+│   ├── validate.symbi               # Finding verification (read-only)
+│   ├── exploit.symbi                # Exploitation (human-gated)
+│   ├── post-exploit.symbi           # Post-exploitation (human-gated)
+│   ├── reflector.symbi              # Post-phase lesson extractor (bounded)
+│   └── reporter.symbi               # Report generation
 ├── tools/                     # 19 ToolClad manifests (.clad.toml)
 ├── toolclad.toml              # Project-level custom type definitions
 ├── policies/                  # 8 Cedar policy files
@@ -332,7 +333,7 @@ symbi-redteam/
 │   ├── vuln_tools.rs             # 4 vulnerability tools
 │   ├── exploit_tools.rs          # 4 exploitation tools
 │   ├── postexploit_tools.rs      # 4 post-exploitation tools
-│   ├── evidence_tools.rs         # 5 evidence management tools
+│   ├── evidence_tools.rs         # 7 evidence management tools (incl. verify_finding, mark_false_positive)
 │   ├── knowledge_tools.rs        # store_knowledge + recall_knowledge
 │   ├── reporting.rs              # 4 reporting tools
 │   └── db.rs                     # SQLite + LanceDB layer

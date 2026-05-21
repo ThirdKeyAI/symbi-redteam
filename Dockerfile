@@ -26,10 +26,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     protobuf-compiler libprotobuf-dev cmake pkg-config libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install symbi from crates.io with required features
-# v1.10.0 includes the HTTP Input tool-execution fixes
-RUN cargo install symbi@1.10.0 --locked \
-    --features "native-sandbox,interactive"
+# Install symbi from crates.io with required features.
+# v1.14.1 is the current published release — v1.14.0 was yanked because its
+# release workflow failed, and v1.10.0 was yanked in the same cleanup. v1.14.1
+# bundles the security-audit response (fail-closed default policy gate, JWT
+# algorithm allowlist, hardened invis-strip) on top of the HTTP Input fixes.
+#
+# Feature notes:
+#   - `cedar` is required: v1.14.0 made the default policy gate fail-closed,
+#     so without the Cedar gate every tool call is denied.
+#   - `native-sandbox` is intentionally *omitted*: as of v1.14.0 it refuses to
+#     compile in release builds because it provides zero isolation. This
+#     container is itself the sandbox (Kali image with dropped capabilities).
+#   - `interactive` is already in the default feature set.
+RUN cargo install symbi@1.14.1 --locked --features "cedar"
 
 # --- Stage 2: Runtime image with Kali toolchain ---
 FROM kalilinux/kali-rolling

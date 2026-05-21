@@ -299,3 +299,62 @@ fn finding_has_audit_hash() {
     assert_eq!(hash.len(), 64);
     assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
 }
+
+// =============================================================================
+// Finding verification (validate agent)
+// =============================================================================
+
+#[test]
+fn record_verification_flips_verified_and_clears_gate() {
+    let mut conn = test_db();
+    let eng_id = create_test_engagement(&conn);
+
+    let finding_id = db::insert_finding(&conn, &test_finding(&eng_id)).unwrap();
+    assert_eq!(db::count_unverified_critical_high(&conn, &eng_id).unwrap(), 1);
+
+    db::record_verification(&mut conn, &db::NewVerification {
+        finding_id: finding_id.clone(),
+        verdict: db::Verdict::Verified,
+        rationale: "PoC reproduces; CVSS confirmed".to_string(),
+        verifier: "validate".to_string(),
+    }).unwrap();
+
+    let updated = &db::query_findings(&conn, &eng_id, None, None, None).unwrap()[0];
+    assert!(updated.verified);
+    assert!(!updated.false_positive);
+    assert_eq!(db::count_unverified_critical_high(&conn, &eng_id).unwrap(), 0);
+}
+
+#[test]
+fn record_verification_false_positive_sets_both_flags() {
+    let mut conn = test_db();
+    let eng_id = create_test_engagement(&conn);
+    let finding_id = db::insert_finding(&conn, &test_finding(&eng_id)).unwrap();
+
+    db::record_verification(&mut conn, &db::NewVerification {
+        finding_id: finding_id.clone(),
+        verdict: db::Verdict::FalsePositive,
+        rationale: "Nuclei template matched a sample app banner, not the real service".to_string(),
+        verifier: "validate".to_string(),
+    }).unwrap();
+
+    let updated = &db::query_findings(&conn, &eng_id, None, None, None).unwrap()[0];
+    assert!(updated.verified, "false_positive verdict should also satisfy the verified gate");
+    assert!(updated.false_positive);
+    assert_eq!(db::count_unverified_critical_high(&conn, &eng_id).unwrap(), 0);
+}
+
+#[test]
+fn record_verification_unknown_finding_errors() {
+    let mut conn = test_db();
+    let _ = create_test_engagement(&conn);
+
+    let err = db::record_verification(&mut conn, &db::NewVerification {
+        finding_id: "nonexistent-id".to_string(),
+        verdict: db::Verdict::Verified,
+        rationale: "n/a".to_string(),
+        verifier: "validate".to_string(),
+    }).unwrap_err();
+
+    assert!(matches!(err, rusqlite::Error::QueryReturnedNoRows));
+}

@@ -5,12 +5,14 @@
 // phase ordering, and decides transitions based on cumulative findings.
 //
 // Phase flow:
-//   1. recon       -- Network discovery, fingerprinting, CVE lookup
-//   2. enum        -- Service enumeration (web, SMB, SNMP)
-//   3. vuln-assess -- Vulnerability scanning (nuclei, sqlmap detect, NSE)
-//   4. exploit     -- Exploitation (HUMAN APPROVAL REQUIRED)
-//   5. post-exploit-- Lateral movement (HUMAN APPROVAL + SCOPE REVALIDATION)
-//   6. reporter    -- Report generation (executive, technical, remediation)
+//   1. recon         -- Network discovery, fingerprinting, CVE lookup
+//   2. enum          -- Service enumeration (web, SMB, SNMP)
+//   3. vuln-assess   -- Vulnerability scanning (nuclei, sqlmap detect, NSE)
+//   4. validate      -- Adjudicate vuln findings before exploitation
+//   5. exploit       -- Exploitation (HUMAN APPROVAL REQUIRED)
+//   6. post-exploit  -- Lateral movement (HUMAN APPROVAL + SCOPE REVALIDATION)
+//   7. validate      -- Adjudicate exploit + post-exploit findings
+//   8. reporter      -- Report generation (executive, technical, remediation)
 //
 // After each phase completes the controller invokes the reflector agent
 // (policies/reflector.cedar), which reads the phase's findings and writes
@@ -22,9 +24,11 @@
 // Phase transition rules:
 //   - recon -> enum: requires at least 1 recon finding
 //   - enum -> vuln: requires at least 1 enumeration finding
-//   - vuln -> exploit: requires at least 1 exploitable vulnerability
+//   - vuln -> validate: always (drains the unverified critical/high backlog)
+//   - validate -> exploit: requires at least 1 exploitable vulnerability
 //   - exploit -> post-exploit: requires at least 1 successful exploit
-//   - post-exploit -> reporter: always allowed
+//   - post-exploit -> validate: always
+//   - validate -> reporter: requires unverified_critical_high_count == 0
 //
 // ORGA flow per phase:
 //   OBSERVE: Check engagement state and phase completion status
@@ -72,17 +76,29 @@ agent engagement_controller {
         let vuln_result = invoke_agent("vuln-assess", engagement_id, enum_result.targets);
         invoke_agent("reflector", engagement_id, phase: "vuln");
 
-        // Phase 4: Exploitation (requires exploitable vulns + HUMAN APPROVAL)
+        // Phase 4: Validation (adjudicate vuln findings before exploitation)
+        // Validate agent is the ONLY principal allowed to flip verified /
+        // false_positive flags; structurally denied store_finding by
+        // policies/validation.cedar. Required to clear the
+        // vuln_findings_reviewed gate in phase-gates.cedar.
+        let validate_vuln = invoke_agent("validate", engagement_id, vuln_result.vulnerabilities);
+
+        // Phase 5: Exploitation (requires verified vulns + HUMAN APPROVAL)
         // Delegate to exploit agent -- operator must approve each exploit
-        let exploit_result = invoke_agent("exploit", engagement_id, vuln_result.vulnerabilities);
+        let exploit_result = invoke_agent("exploit", engagement_id, validate_vuln.verified);
         invoke_agent("reflector", engagement_id, phase: "exploit");
 
-        // Phase 5: Post-Exploitation (requires successful exploit + HUMAN APPROVAL)
+        // Phase 6: Post-Exploitation (requires successful exploit + HUMAN APPROVAL)
         // Delegate to post-exploit agent -- operator approves + scope revalidation
         let post_exploit_result = invoke_agent("post-exploit", engagement_id, exploit_result.sessions);
         invoke_agent("reflector", engagement_id, phase: "post_exploit");
 
-        // Phase 6: Reporting (always allowed)
+        // Phase 7: Validation (adjudicate exploit + post-exploit findings)
+        // Required to clear the unverified_critical_high_count gate in
+        // policies/evidence.cedar before reports may be generated.
+        let validate_post = invoke_agent("validate", engagement_id, post_exploit_result.findings);
+
+        // Phase 8: Reporting (allowed once validation has cleared the backlog)
         // Generate executive, technical, and remediation reports; reporter
         // reads the accumulated reflector knowledge for the narrative sections.
         let report_result = invoke_agent("reporter", engagement_id, report_types);

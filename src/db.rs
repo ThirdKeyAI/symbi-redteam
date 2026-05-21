@@ -318,6 +318,68 @@ pub fn count_unverified_critical_high(
 }
 
 // =============================================================================
+// Finding Verification
+// =============================================================================
+
+/// Verdict recorded by the validate agent against a finding.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Verdict {
+    Verified,
+    FalsePositive,
+}
+
+impl Verdict {
+    fn as_db_str(self) -> &'static str {
+        match self {
+            Verdict::Verified => "verified",
+            Verdict::FalsePositive => "false_positive",
+        }
+    }
+}
+
+/// Audit record describing a verification decision against a finding.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NewVerification {
+    pub finding_id: String,
+    pub verdict: Verdict,
+    pub rationale: String,
+    pub verifier: String,
+}
+
+/// Atomically apply a verification verdict: record an audit row in
+/// `finding_verifications` and flip the corresponding flags on `findings`.
+/// `verified = TRUE` is set for both verdicts so the unverified-critical-high
+/// gate clears; `false_positive = TRUE` is set only for FalsePositive verdicts.
+pub fn record_verification(
+    conn: &mut Connection,
+    v: &NewVerification,
+) -> SqlResult<String> {
+    let id = Uuid::new_v4().to_string();
+    let tx = conn.transaction()?;
+
+    let updated = tx.execute(
+        "UPDATE findings
+         SET verified = TRUE,
+             false_positive = CASE WHEN ?1 = 'false_positive' THEN TRUE ELSE false_positive END
+         WHERE id = ?2",
+        params![v.verdict.as_db_str(), v.finding_id],
+    )?;
+    if updated == 0 {
+        return Err(rusqlite::Error::QueryReturnedNoRows);
+    }
+
+    tx.execute(
+        "INSERT INTO finding_verifications
+            (id, finding_id, verdict, rationale, verifier)
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, v.finding_id, v.verdict.as_db_str(), v.rationale, v.verifier],
+    )?;
+
+    tx.commit()?;
+    Ok(id)
+}
+
+// =============================================================================
 // Tool Run
 // =============================================================================
 
