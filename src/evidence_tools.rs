@@ -345,6 +345,100 @@ pub fn store_tool_run(input: StoreToolRunInput) -> Result<StoreToolRunOutput, To
 }
 
 // ---------------------------------------------------------------------------
+// verify_finding -- Mark a finding as verified by the validate agent
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct VerifyFindingInput {
+    /// UUID of the finding being verified
+    pub finding_id: String,
+    /// Free-form justification (evidence reviewed, reproduction notes, etc.)
+    pub rationale: String,
+    /// Identity of the verifier (agent name or human operator)
+    pub verifier: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct VerifyFindingOutput {
+    pub verification_id: String,
+    pub audit_hash: String,
+    pub status: String,
+}
+
+pub fn verify_finding(input: VerifyFindingInput) -> Result<VerifyFindingOutput, ToolError> {
+    record_verdict(input.finding_id, crate::db::Verdict::Verified, input.rationale, input.verifier)
+}
+
+// ---------------------------------------------------------------------------
+// mark_false_positive -- Suppress a finding the validate agent rejected
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+pub struct MarkFalsePositiveInput {
+    /// UUID of the finding being marked
+    pub finding_id: String,
+    /// Why the finding is a false positive (verification evidence)
+    pub rationale: String,
+    /// Identity of the verifier (agent name or human operator)
+    pub verifier: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarkFalsePositiveOutput {
+    pub verification_id: String,
+    pub audit_hash: String,
+    pub status: String,
+}
+
+pub fn mark_false_positive(input: MarkFalsePositiveInput) -> Result<MarkFalsePositiveOutput, ToolError> {
+    let out = record_verdict(input.finding_id, crate::db::Verdict::FalsePositive, input.rationale, input.verifier)?;
+    Ok(MarkFalsePositiveOutput {
+        verification_id: out.verification_id,
+        audit_hash: out.audit_hash,
+        status: out.status,
+    })
+}
+
+fn record_verdict(
+    finding_id: String,
+    verdict: crate::db::Verdict,
+    rationale: String,
+    verifier: String,
+) -> Result<VerifyFindingOutput, ToolError> {
+    if finding_id.trim().is_empty() {
+        return Err(ToolError::InvalidInput("finding_id is required".into()));
+    }
+    if rationale.trim().is_empty() {
+        return Err(ToolError::InvalidInput("rationale is required".into()));
+    }
+    if verifier.trim().is_empty() {
+        return Err(ToolError::InvalidInput("verifier is required".into()));
+    }
+
+    let db_path = std::env::var("SYMBI_DB_PATH")
+        .unwrap_or_else(|_| "/app/.symbiont/data/redteam.db".to_string());
+
+    let mut conn = crate::db::init_db(&db_path)
+        .map_err(|e| ToolError::ExecutionFailed(format!("Database error: {e}")))?;
+
+    let new = crate::db::NewVerification { finding_id: finding_id.clone(), verdict, rationale, verifier };
+    let verification_id = crate::db::record_verification(&mut conn, &new)
+        .map_err(|e| match e {
+            rusqlite::Error::QueryReturnedNoRows => {
+                ToolError::InvalidInput(format!("finding_id '{finding_id}' not found"))
+            }
+            other => ToolError::ExecutionFailed(format!("Verification failed: {other}")),
+        })?;
+
+    let audit_hash = hex_sha256(verification_id.as_bytes());
+    Ok(VerifyFindingOutput {
+        verification_id,
+        audit_hash,
+        status: "verified".to_string(),
+    })
+}
+
+// ---------------------------------------------------------------------------
 // capture_evidence -- Screenshot/output archival with integrity hash
 // ---------------------------------------------------------------------------
 
@@ -448,6 +542,21 @@ pub fn register_tools() -> Vec<ToolDefinition> {
             .input_schema::<CaptureEvidenceInput>()
             .cedar_resource("PenTest::EvidenceStore")
             .cedar_actions(&["PenTest::Action::store_evidence"]),
+        ToolDefinition::new("verify_finding")
+            .description("Mark a finding as verified after reviewing its evidence. Reserved \
+                          for the validate agent: structurally denied to all other principals \
+                          by validation.cedar. Records an audit row in finding_verifications.")
+            .input_schema::<VerifyFindingInput>()
+            .cedar_resource("PenTest::EvidenceStore")
+            .cedar_actions(&["PenTest::Action::verify_evidence"]),
+        ToolDefinition::new("mark_false_positive")
+            .description("Suppress a finding as a false positive after reviewing its evidence. \
+                          Reserved for the validate agent: structurally denied to all other \
+                          principals by validation.cedar. Sets verified = TRUE and \
+                          false_positive = TRUE atomically.")
+            .input_schema::<MarkFalsePositiveInput>()
+            .cedar_resource("PenTest::EvidenceStore")
+            .cedar_actions(&["PenTest::Action::verify_evidence"]),
     ]
 }
 

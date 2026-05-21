@@ -38,9 +38,9 @@ fn postexploit_tools_registers_4() {
 }
 
 #[test]
-fn evidence_tools_registers_5() {
+fn evidence_tools_registers_7() {
     let tools = evidence_tools::register_tools();
-    assert_eq!(tools.len(), 5, "evidence should register 5 tools");
+    assert_eq!(tools.len(), 7, "evidence should register 7 tools");
 }
 
 #[test]
@@ -56,7 +56,7 @@ fn knowledge_tools_registers_2() {
 }
 
 #[test]
-fn total_tools_is_35() {
+fn total_tools_is_37() {
     let total = recon_tools::register_tools().len()
         + enum_tools::register_tools().len()
         + vuln_tools::register_tools().len()
@@ -65,7 +65,7 @@ fn total_tools_is_35() {
         + evidence_tools::register_tools().len()
         + reporting::register_tools().len()
         + knowledge_tools::register_tools().len();
-    assert_eq!(total, 35, "total tools should be 35");
+    assert_eq!(total, 37, "total tools should be 37");
 }
 
 // =============================================================================

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository is a governed autonomous penetration testing platform using the Symbiont trust stack. Eight hierarchical agents (six phase agents, one orchestrator, one reflector) run a PTES-methodology pen test with Cedar policy enforcement, risk-tiered tool authorization, and cryptographic audit trails. Between phases a bounded reflector agent distils lessons into a knowledge store the next phase reads — a pattern borrowed from `symbiont-karpathy-loop`.
+This repository is a governed autonomous penetration testing platform using the Symbiont trust stack. Nine hierarchical agents (seven phase agents, one orchestrator, one reflector) run a PTES-methodology pen test with Cedar policy enforcement, risk-tiered tool authorization, and cryptographic audit trails. Between phases a bounded reflector agent distils lessons into a knowledge store the next phase reads — a pattern borrowed from `symbiont-karpathy-loop`. A read-only validate agent adjudicates findings between vulnerability assessment and exploitation, and again before reporting; it is the only principal authorised to flip `verified` / `false_positive`, and is structurally forbidden from `store_finding` by `policies/validation.cedar`.
 
 ## Architecture
 
@@ -10,25 +10,27 @@ The system has five layers:
 
 1. **Offensive toolchain** (Kali): nmap, nikto, nuclei, sqlmap, hydra, metasploit, impacket, pypykatz, chisel, ligolo, gobuster, enum4linux, smbclient, snmpwalk, amass, whatweb, whois, searchsploit. Dumb tools with no concept of governance.
 2. **Wrapper scripts** (`scripts/tool-wrappers/`): 19 sandboxed wrappers. Sanitize arguments, capture output, enforce timeouts, return structured JSON. Defense in depth.
-3. **MCP tools** (`src/*.rs`): 33 Rust-defined tools across 8 modules. Each tool call is intercepted by the ORGA Gate for Cedar policy evaluation.
-4. **Agent DSL** (`agents/`): 8 Symbiont DSL agents in a hierarchical tree. The engagement controller orchestrates 6 phase agents via `ask()`, and invokes the bounded reflector after each phase.
+3. **MCP tools** (`src/*.rs`): 37 Rust-defined tools across 8 modules. Each tool call is intercepted by the ORGA Gate for Cedar policy evaluation.
+4. **Agent DSL** (`agents/`): 9 Symbiont DSL agents in a hierarchical tree. The engagement controller orchestrates 7 phase agents (recon, enum, vuln-assess, validate, exploit, post-exploit, reporter) via `ask()`, and invokes the bounded reflector after each phase.
 5. **Symbiont runtime**: Runs ORGA loops, evaluates Cedar policies, manages inter-agent communication, maintains cryptographic audit trail.
 
 ## Agent Hierarchy
 
 ```
-engagement-controller.dsl
+engagement-controller.symbi
 ├── ask(recon)          — Low risk, auto-allowed
 ├── ask(reflector)      — Post-phase; store_knowledge only
 ├── ask(enum)           — Medium risk, rate-limited
 ├── ask(reflector)      — Post-phase; store_knowledge only
 ├── ask(vuln-assess)    — Medium-high risk, non-prod only
 ├── ask(reflector)      — Post-phase; store_knowledge only
+├── ask(validate)       — Read-only adjudication; structurally denied store_finding
 ├── ask(exploit)        — High risk, human approval required
 ├── ask(reflector)      — Post-phase; store_knowledge only
 ├── ask(post-exploit)   — Highest risk, approval + scope revalidation
 ├── ask(reflector)      — Post-phase; store_knowledge only
-└── ask(reporter)       — Report generation, always allowed
+├── ask(validate)       — Final adjudication before reporting
+└── ask(reporter)       — Report generation, gated on unverified_critical_high_count == 0
 ```
 
 The reflector pattern (borrowed from `symbiont-karpathy-loop`) runs after
@@ -43,20 +45,22 @@ enum, exploit, and post-exploit tool is rejected at the gate.
 
 | File | Purpose | When to modify |
 |---|---|---|
-| `agents/engagement-controller.dsl` | Orchestrator agent | Changing phase ordering, adding new phases |
-| `agents/recon.dsl` | Reconnaissance | Adding recon tools, changing scan strategy |
-| `agents/enum.dsl` | Enumeration | Adding enum tools, changing enumeration targets |
-| `agents/vuln-assess.dsl` | Vulnerability assessment | Changing vuln scan templates or strategies |
-| `agents/exploit.dsl` | Exploitation | Changing exploit selection or approval workflow |
-| `agents/post-exploit.dsl` | Post-exploitation | Changing lateral movement strategies |
-| `agents/reporter.dsl` | Report generation | Changing report types or formats |
-| `agents/reflector.dsl` | Post-phase lesson extractor | Changing reflector prompt or triple shape |
+| `agents/engagement-controller.symbi` | Orchestrator agent | Changing phase ordering, adding new phases |
+| `agents/recon.symbi` | Reconnaissance | Adding recon tools, changing scan strategy |
+| `agents/enum.symbi` | Enumeration | Adding enum tools, changing enumeration targets |
+| `agents/vuln-assess.symbi` | Vulnerability assessment | Changing vuln scan templates or strategies |
+| `agents/validate.symbi` | Finding verification (read-only adjudication) | Changing verification heuristics |
+| `agents/exploit.symbi` | Exploitation | Changing exploit selection or approval workflow |
+| `agents/post-exploit.symbi` | Post-exploitation | Changing lateral movement strategies |
+| `agents/reporter.symbi` | Report generation | Changing report types or formats |
+| `agents/reflector.symbi` | Post-phase lesson extractor | Changing reflector prompt or triple shape |
 | `policies/scope.cedar` | Target scope | Adding/removing allowed CIDRs |
 | `policies/tool-authorization.cedar` | Tool risk tiers | Changing which tools need which authorization |
 | `policies/phase-gates.cedar` | Phase transitions | Changing methodology requirements |
 | `policies/rate-limits.cedar` | Frequency limits | Adjusting per-target and global limits |
 | `policies/escalation.cedar` | Human approval | Changing approval expiry or requirements |
 | `policies/evidence.cedar` | Evidence rules | Changing evidence chain requirements |
+| `policies/validation.cedar` | Validate-agent separation of duties | Changing who may verify findings |
 | `policies/reflector.cedar` | Reflector bounds | Changing what tools the reflector can call |
 | `policies/time-bounds.cedar` | Engagement window | Changing time restrictions |
 | `src/recon_tools.rs` | 7 recon MCP tools | Adding recon tools or changing schemas |
@@ -64,7 +68,7 @@ enum, exploit, and post-exploit tool is rejected at the gate.
 | `src/vuln_tools.rs` | 4 vuln MCP tools | Adding vuln tools |
 | `src/exploit_tools.rs` | 4 exploit MCP tools | Adding exploit tools |
 | `src/postexploit_tools.rs` | 4 post-exploit MCP tools | Adding post-exploit tools |
-| `src/evidence_tools.rs` | 5 evidence MCP tools | Changing evidence storage |
+| `src/evidence_tools.rs` | 7 evidence MCP tools | Changing evidence storage |
 | `src/knowledge_tools.rs` | 2 knowledge MCP tools | Changing reflector/recall contract |
 | `src/reporting.rs` | 4 reporting MCP tools | Changing report generation |
 | `src/db.rs` | Database layer | Schema changes, new queries |
@@ -101,13 +105,20 @@ Edit `scope/scope.toml` to add the target definition, then update `policies/scop
 2. Create a new `src/*_tools.rs` module
 3. Add phase-gate rules in `policies/phase-gates.cedar`
 4. Add tool authorization rules in `policies/tool-authorization.cedar`
-5. Update `engagement-controller.dsl` to orchestrate the new phase
+5. Update `engagement-controller.symbi` to orchestrate the new phase
 6. Update `symbi.toml` if the new phase needs different resource limits
 
 ### Generate a retest comparison
 The reporter agent's `compare_engagements` tool takes a current and baseline engagement ID and produces a delta report showing remediated, persistent, regressed, and new findings.
 
-## Registered Tools (33 total)
+### Apply the validate-agent cutover migration
+Pre-cutover engagements have `verified = FALSE` for every finding, which now blocks `generate_report` via `evidence.cedar`. Run the one-time backfill once per legacy database:
+
+    sqlite3 /path/to/redteam.db < db/migrations/2026-05-21-validate-cutover.sql
+
+This inserts a synthetic `finding_verifications` row per finding (verifier `pre_validate_cutover`) and flips `verified = TRUE`. Distinguish backfilled rows from real validate-agent decisions by filtering on `finding_verifications.verifier`.
+
+## Registered Tools (37 total)
 
 ### Recon Tools (7)
 | Tool | Wrapper | Cedar Resource |
@@ -153,14 +164,16 @@ The reporter agent's `compare_engagements` tool takes a current and baseline eng
 | `chisel_tunnel` | `chisel-wrapper.sh` | `PenTest::ScanTarget` |
 | `ligolo_proxy` | `ligolo-wrapper.sh` | `PenTest::ScanTarget` |
 
-### Evidence Tools (5)
-| Tool | Cedar Resource |
-|---|---|
-| `store_finding` | `PenTest::EvidenceStore` |
-| `query_findings` | `PenTest::EvidenceStore` |
-| `search_similar_findings` | `PenTest::EvidenceStore` |
-| `store_tool_run` | `PenTest::EvidenceStore` |
-| `capture_evidence` | `PenTest::EvidenceStore` |
+### Evidence Tools (7)
+| Tool | Cedar Resource | Notes |
+|---|---|---|
+| `store_finding` | `PenTest::EvidenceStore` | Denied to validate by validation.cedar |
+| `query_findings` | `PenTest::EvidenceStore` | |
+| `search_similar_findings` | `PenTest::EvidenceStore` | |
+| `store_tool_run` | `PenTest::EvidenceStore` | |
+| `capture_evidence` | `PenTest::EvidenceStore` | |
+| `verify_finding` | `PenTest::EvidenceStore` | Reserved for validate principal |
+| `mark_false_positive` | `PenTest::EvidenceStore` | Reserved for validate principal |
 
 ### Reporting Tools (4)
 | Tool | Cedar Resource |

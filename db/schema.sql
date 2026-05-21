@@ -50,6 +50,15 @@ CREATE TABLE IF NOT EXISTS tool_runs (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS finding_verifications (
+    id TEXT PRIMARY KEY,
+    finding_id TEXT NOT NULL REFERENCES findings(id),
+    verdict TEXT NOT NULL CHECK(verdict IN ('verified','false_positive')),
+    rationale TEXT NOT NULL,
+    verifier TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS retests (
     id TEXT PRIMARY KEY,
     engagement_id TEXT NOT NULL REFERENCES engagements(id),
@@ -86,5 +95,6 @@ CREATE INDEX IF NOT EXISTS idx_findings_phase ON findings(phase);
 CREATE INDEX IF NOT EXISTS idx_tool_runs_engagement ON tool_runs(engagement_id);
 CREATE INDEX IF NOT EXISTS idx_tool_runs_tool ON tool_runs(tool);
 CREATE INDEX IF NOT EXISTS idx_retests_engagement ON retests(engagement_id);
+CREATE INDEX IF NOT EXISTS idx_verifications_finding ON finding_verifications(finding_id);
 CREATE INDEX IF NOT EXISTS idx_knowledge_engagement ON knowledge(engagement_id);
 CREATE INDEX IF NOT EXISTS idx_knowledge_phase ON knowledge(engagement_id, phase);
