@@ -31,8 +31,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # release workflow failed, and v1.10.0 was yanked in the same cleanup. v1.14.1
 # bundles the security-audit response (fail-closed default policy gate, JWT
 # algorithm allowlist, hardened invis-strip) on top of the HTTP Input fixes.
-RUN cargo install symbi@1.14.1 --locked \
-    --features "native-sandbox,interactive"
+#
+# Feature notes:
+#   - `cedar` is required: v1.14.0 made the default policy gate fail-closed,
+#     so without the Cedar gate every tool call is denied.
+#   - `native-sandbox` is intentionally *omitted*: as of v1.14.0 it refuses to
+#     compile in release builds because it provides zero isolation. This
+#     container is itself the sandbox (Kali image with dropped capabilities).
+#   - `interactive` is already in the default feature set.
+RUN cargo install symbi@1.14.1 --locked --features "cedar"
 
 # --- Stage 2: Runtime image with Kali toolchain ---
 FROM kalilinux/kali-rolling
