@@ -542,12 +542,38 @@ Example shape:
   "signature": {
     "alg": "Ed25519",
     "key_id": "producer-key-1",
-    "sig": "base64..."
+    "sig": "hex64..."
   }
 }
 ```
 
 The seed does not grant authority. It proposes validation objectives. Symbiont still evaluates scope, policy, risk, approvals, and time bounds before any action runs.
+
+### Verifying a seed
+
+redteam verifies a seed's signature against a **pinned producer key** before any
+objective is acted on. Pin the producer's public key(s) by `key_id`, then run the
+verifier:
+
+```bash
+# Pin via a committed-safe keyring (public keys only)…
+cp keys/producers.toml.example keys/producers.toml   # add the real producer-key-1 hex
+# …or via env:
+export CODERED_PRODUCER_PUBKEYS="producer-key-1=<hex32>"
+
+redteam-seed verify --seed engagement-seed.json
+```
+
+A non-zero exit means **do not act on the seed** (unknown `key_id`, wrong key, or
+tampered payload). Keys rotate by adding a new `key_id`.
+
+**Signature contract (both sides implement byte-for-byte):** the producer builds
+the seed with `signature` set to the JSON string `""`, signs
+`serde_json::to_string(seed)` (compact, sorted keys) with the producer's Ed25519
+key, then replaces `signature` with the `{alg, key_id, sig}` envelope above.
+Verification resets `signature` to `""`, re-serializes compactly, and checks the
+envelope's `sig` against the pinned key — setting the field to `""` (not removing
+it) reproduces the exact signed bytes.
 
 ---
 
@@ -671,6 +697,23 @@ Verify integrity:
 symbi audit verify .symbiont/audit/
 ```
 
+### Sealing the journal
+
+The runtime hash-chains the journal but does not sign it. `redteam-seal` adds a
+cryptographic attestation: it verifies the chain links, then signs the chain
+**head** with the engagement's Ed25519 key (`.symbiont/keys/<id>.{priv,pub}`,
+generated on first seal). One signature attests the whole journal — a
+forged-but-relinked journal fails verification because the attacker lacks the
+private key.
+
+```bash
+redteam-seal create --engagement <id> --journal .symbiont/audit/audit.jsonl
+redteam-seal verify --seal .symbiont/audit/<id>.seal --journal .symbiont/audit/audit.jsonl
+```
+
+The web viewer's audit badge upgrades from `AUDIT LINKED` to `AUDIT SEALED` when a
+valid seal matches the current journal head.
+
 ---
 
 ## Observability
@@ -745,7 +788,8 @@ Pages:
 | Report | The reporter agent's `report.md`, rendered (raw HTML neutralised) |
 
 The audit badge verifies hash-chain *linkage* (each entry references the prior
-entry's hash); full cryptographic verification stays with `symbi audit verify`.
+entry's hash) and upgrades to `AUDIT SEALED` when a valid `redteam-seal` seal
+attests the current head; full runtime verification stays with `symbi audit verify`.
 The viewer is not wired into the Docker image — build and run it on the host
 against the persisted `data/` volume.
 
@@ -765,9 +809,13 @@ symbi-redteam/
 ├── scope/                  # engagement scope (scope.toml)
 ├── templates/              # report templates
 ├── src/                    # Rust MCP tool registration + db layer
+│   ├── crypto.rs           # Ed25519 signing primitives
+│   ├── seed.rs             # signed-seed verification (pinned producer keys)
+│   ├── audit.rs            # journal hash-chain linkage + sealing
 │   ├── web/                # read-only web viewer (axum + maud)
-│   └── bin/web.rs          # redteam-web binary entrypoint
+│   └── bin/                # redteam-web, redteam-seed, redteam-seal binaries
 ├── assets/                 # web viewer static assets (CSS/JS/fonts)
+├── keys/                   # producer keyring (producers.toml.example)
 ├── db/                     # SQLite schema + migrations/
 ├── docs/                   # design docs
 ├── tests/                  # tests

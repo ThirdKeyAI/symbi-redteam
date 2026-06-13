@@ -62,6 +62,7 @@ fn state() -> (tempfile::TempDir, AppState) {
         engagement_id: "eng-1".to_string(),
         journal_path: None,
         report_path: None,
+        seal_path: None,
     };
     (dir, state)
 }
