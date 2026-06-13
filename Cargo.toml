@@ -30,7 +30,18 @@ tracing = "0.1"
 urlencoding = "2"
 symbi-channel-adapter = { version = "0.1.3", features = ["slack"] }
 symbi-runtime = "1.14.1"
+# Web viewer (read-only dashboard binary, src/bin/web.rs)
+maud = { version = "0.26", features = ["axum"] }
+tower-http = { version = "0.5", features = ["set-header"] }
+pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
 
 [dev-dependencies]
 wiremock = "0.6"
 tempfile = "3"
+tower = { version = "0.4", features = ["util"] }
+
+[[bin]]
+name = "redteam-web"
+path = "src/bin/web.rs"

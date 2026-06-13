@@ -714,6 +714,47 @@ Then open `http://localhost:16686` and select the `symbi-redteam` service.
 
 ---
 
+## Web viewer
+
+`redteam-web` is a local, **read-only** dashboard over one engagement's SQLite
+database — a companion binary built from this crate (server-rendered Rust +
+Maud, no JS build step). It has **no authentication**: bind it to localhost and
+do not expose it to a network.
+
+```bash
+# Build the viewer binary
+cargo build --release --bin redteam-web
+
+# Serve the engagement DB (read-only); auto-resolves the sole engagement
+./target/release/redteam-web --db data/redteam.db --port 8088
+
+# Then open http://127.0.0.1:8088
+```
+
+Flags: `--db` (engagement SQLite, opened read-only), `--engagement <id>` (only
+needed when the DB holds more than one), `--port` (default `8088`), `--bind`
+(default `127.0.0.1`), `--journal` (hash-chained audit log for the integrity
+badge; auto-located next to the DB), `--report` (a `report.md` to render).
+
+Pages:
+
+| Page | Shows |
+|---|---|
+| Overview | Engagement header, severity histogram, phase breakdown, Cedar allow/deny tallies, audit-integrity badge |
+| Findings | Filterable/sortable table (phase, severity, tool) with target, CVSS, and validate status |
+| Finding detail | Full finding plus the **validate-agent adjudication trail** (`finding_verifications`: verdict, verifier, rationale) |
+| Knowledge | Reflector-authored subject-predicate-object triples |
+| Evidence | The `tool_runs` log — command, exit code, Cedar decision/policy, approver |
+| Graph | Findings clustered by target host, overlaid with reflector knowledge relations (cytoscape) |
+| Report | The reporter agent's `report.md`, rendered (raw HTML neutralised) |
+
+The audit badge verifies hash-chain *linkage* (each entry references the prior
+entry's hash); full cryptographic verification stays with `symbi audit verify`.
+The viewer is not wired into the Docker image — build and run it on the host
+against the persisted `data/` volume.
+
+---
+
 ## Repository layout
 
 ```text
@@ -728,6 +769,9 @@ symbi-redteam/
 ├── scope/                  # engagement scope (scope.toml)
 ├── templates/              # report templates
 ├── src/                    # Rust MCP tool registration + db layer
+│   ├── web/                # read-only web viewer (axum + maud)
+│   └── bin/web.rs          # redteam-web binary entrypoint
+├── assets/                 # web viewer static assets (CSS/JS/fonts)
 ├── db/                     # SQLite schema + migrations/
 ├── docs/                   # design docs
 ├── tests/                  # tests
