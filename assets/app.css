@@ -1,0 +1,529 @@
+/* ============================================================================
+   codered — design tokens & component sheet
+   Direction A · "Signal"  ·  June 2026
+   ----------------------------------------------------------------------------
+   Plain CSS, no build step. Themed via html[data-theme="dark" | "light"].
+   CSP-safe: no imports, no external fonts. Vendor JetBrains Mono woff2 and
+   point the @font-face srcs at your embedded asset routes; everything
+   degrades cleanly to ui-monospace if the face is absent.
+   ============================================================================ */
+
+/* ---------------------------------------------------------------------------
+   0. Vendored font (optional but recommended — ~92 KB latin subset)
+   --------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/assets/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/assets/fonts/JetBrainsMono-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/assets/fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/assets/fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
+/* ---------------------------------------------------------------------------
+   1. Tokens — DARK (default)
+   Existing names kept: --bg --panel --border --fg --muted --link --accent
+   --chip --crit --high --med --low --info. New names extend the set.
+   --------------------------------------------------------------------------- */
+:root,
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* surfaces */
+  --bg:            #131114;
+  --panel:         #19171b;
+  --elevated:      #211e23;   /* table heads, code insets, hover fills        */
+  --inset:         #0e0d0f;   /* recessed wells: graph canvas, code blocks    */
+  --chrome:        #18161a;   /* header / nav bar                             */
+
+  /* borders */
+  --border:        #2e2a30;
+  --border-subtle: #242127;   /* row dividers                                 */
+
+  /* text */
+  --fg:            #ece8e4;
+  --muted:         #a59d98;
+  --faint:         #6f6862;   /* meta, timestamps, disabled                   */
+
+  /* brand */
+  --accent:        #e5484d;   /* active nav, primary actions, brand mark      */
+  --accent-soft:   rgba(229, 72, 77, 0.12);
+  --link:          #f0888c;   /* readable red for links on dark               */
+  --chip:          #211e23;   /* neutral chip fill                            */
+
+  /* severity ramp — warm to cool; label ALWAYS rides with the color */
+  --crit:          #ff5d5d;
+  --high:          #ff9152;
+  --med:           #e3c14f;
+  --low:           #6fa8dc;
+  --info:          #9aa0a6;
+  --crit-soft:     rgba(255, 93, 93, 0.10);
+  --high-soft:     rgba(255, 145, 82, 0.10);
+  --med-soft:      rgba(227, 193, 79, 0.10);
+  --low-soft:      rgba(111, 168, 220, 0.10);
+  --info-soft:     rgba(154, 160, 166, 0.10);
+  --crit-ink:      #1a0d0d;   /* text on a filled critical badge              */
+
+  /* status (verdict / poc / audit) */
+  --ok:            #4ec08d;   /* confirmed, reproduced, audit intact          */
+  --ok-soft:       rgba(63, 178, 127, 0.07);
+  --ok-border:     rgba(63, 178, 127, 0.35);
+  --warn:          #d9a13b;   /* uncertain, inconclusive                      */
+  --neutral:       #8a8f98;   /* rebutted, refuted                            */
+  --none:          #565b63;   /* not attempted / empty                        */
+}
+
+/* ---------------------------------------------------------------------------
+   1b. Tokens — LIGHT
+   Warm-neutral paper; severity darkened one step for >= 4.5:1 on panels.
+   --------------------------------------------------------------------------- */
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:            #f4f2f0;
+  --panel:         #ffffff;
+  --elevated:      #efeae6;
+  --inset:         #faf8f6;
+  --chrome:        #fbfaf9;
+
+  --border:        #e0dbd6;
+  --border-subtle: #ebe6e1;
+
+  --fg:            #211d1b;
+  --muted:         #6e6660;
+  --faint:         #9a918a;
+
+  --accent:        #c8363c;
+  --accent-soft:   rgba(200, 54, 60, 0.08);
+  --link:          #b3361c;
+  --chip:          #efeae6;
+
+  --crit:          #c0392f;
+  --high:          #b35a1f;
+  --med:           #8a701d;
+  --low:           #2f6fa8;
+  --info:          #6e7177;
+  --crit-soft:     rgba(192, 57, 47, 0.08);
+  --high-soft:     rgba(179, 90, 31, 0.08);
+  --med-soft:      rgba(138, 112, 29, 0.08);
+  --low-soft:      rgba(47, 111, 168, 0.08);
+  --info-soft:     rgba(110, 113, 119, 0.08);
+  --crit-ink:      #fdf6f6;
+
+  --ok:            #1f8a5b;
+  --ok-soft:       rgba(31, 138, 91, 0.05);
+  --ok-border:     rgba(31, 138, 91, 0.35);
+  --warn:          #9c6f1d;
+  --neutral:       #6e7177;
+  --none:          #9a918a;
+}
+
+/* ---------------------------------------------------------------------------
+   2. Non-color scales (theme-independent)
+   --------------------------------------------------------------------------- */
+:root {
+  /* type */
+  --mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+  --sans: -apple-system, 'Segoe UI', 'Helvetica Neue', Roboto, sans-serif;
+
+  /* type scale (px) — UI is sans, chrome/data is mono */
+  --fs-meta:   10px;   /* table heads, eyebrows, chips (mono, +tracking)      */
+  --fs-mono:   11px;   /* ids, paths, timestamps (mono)                       */
+  --fs-body:   12.5px; /* table cells, controls (sans)                        */
+  --fs-prose:  14px;   /* descriptions, report body (sans)                    */
+  --fs-h3:     16px;
+  --fs-h2:     20px;
+  --fs-h1:     23px;
+  --fs-stat:   25px;   /* stat tile numbers (mono)                            */
+
+  --track:     0.1em;  /* letter-spacing for uppercase mono labels            */
+
+  /* spacing scale */
+  --s1: 4px;  --s2: 8px;  --s3: 12px;  --s4: 16px;
+  --s5: 20px; --s6: 24px; --s7: 32px;  --s8: 48px;
+
+  /* radius — small and square; nothing rounder than 4px */
+  --r-xs: 2px;   /* badges                                                    */
+  --r-sm: 3px;   /* chips, buttons, inputs                                    */
+  --r:    4px;   /* panels, tables, tiles                                     */
+
+  /* elevation is expressed by surface + border shift, never shadow */
+  --shadow: none;
+
+  /* layout */
+  --content-max: min(1600px, 94vw);
+  --nav-h: 52px;
+
+  /* row density (toggled by a class on <body> or container) */
+  --row-pad-y: 6px;     /* compact default                                    */
+  --row-pad-x: 14px;
+}
+.density-comfortable { --row-pad-y: 12px; --row-pad-x: 16px; }
+
+/* ---------------------------------------------------------------------------
+   3. Base
+   --------------------------------------------------------------------------- */
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: var(--fs-body);
+  -webkit-font-smoothing: antialiased;
+}
+main { width: var(--content-max); margin: 0 auto; padding: var(--s6) 0 var(--s8); }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-xs); }
+code, .mono { font-family: var(--mono); }
+
+/* uppercase mono micro-label — the workhorse */
+.eyebrow {
+  font-family: var(--mono); font-size: var(--fs-meta); font-weight: 600;
+  letter-spacing: var(--track); text-transform: uppercase; color: var(--faint);
+}
+
+/* ---------------------------------------------------------------------------
+   4. Header / nav
+   --------------------------------------------------------------------------- */
+.site-header {
+  background: var(--chrome);
+  border-bottom: 1px solid var(--border);
+}
+.site-header .inner {
+  width: var(--content-max); margin: 0 auto; height: var(--nav-h);
+  display: flex; align-items: center; gap: 26px;
+}
+.wordmark { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--fg); }
+.wordmark b { color: var(--accent); font-weight: 700; }   /* code<b>red</b> */
+
+.nav { display: flex; gap: 2px; flex: 1; }
+.nav a {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+  letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--muted); padding: 7px 11px; border-radius: 0;
+}
+.nav a:hover { color: var(--fg); text-decoration: none; }
+.nav a.active {
+  color: var(--fg); font-weight: 600;
+  background: var(--accent-soft);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.theme-toggle {
+  width: 28px; height: 28px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: transparent; color: var(--muted); font-size: 13px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.theme-toggle:hover { color: var(--fg); border-color: var(--muted); }
+
+/* ---------------------------------------------------------------------------
+   5. Audit-integrity badge — the differentiator; one per page, always visible
+   --------------------------------------------------------------------------- */
+.audit-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 600;
+  letter-spacing: 0.06em; padding: 4px 9px; border-radius: var(--r-sm);
+}
+.audit-badge--intact  { color: var(--ok); background: var(--ok-soft); border: 1px solid var(--ok-border); }
+.audit-badge--broken  { color: var(--crit-ink); background: var(--crit); border: 1px solid var(--crit); font-weight: 700; }
+.audit-badge--unknown { color: var(--info); background: var(--info-soft); border: 1px dashed var(--info); }
+
+/* expanded variant (Overview / Evidence) */
+.audit-panel {
+  display: flex; align-items: center; gap: var(--s3);
+  border: 1px solid var(--ok-border); background: var(--ok-soft);
+  border-radius: var(--r); padding: 11px 16px;
+}
+.audit-panel--broken { border-color: var(--crit); background: var(--crit-soft); }
+.audit-panel .glyph {
+  width: 32px; height: 32px; border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+  background: rgba(63, 178, 127, 0.15); color: var(--ok);
+}
+.audit-panel--broken .glyph { background: var(--crit-soft); color: var(--crit); }
+
+/* ---------------------------------------------------------------------------
+   6. Severity badge — critical is the ONLY filled one
+   --------------------------------------------------------------------------- */
+.badge-sev {
+  display: inline-block; font-family: var(--mono);
+  font-size: 9.5px; font-weight: 600; letter-spacing: 0.05em;
+  padding: 2px 7px; border-radius: var(--r-xs); white-space: nowrap;
+}
+.badge-sev--crit { color: var(--crit-ink); background: var(--crit); border: 1px solid var(--crit); font-weight: 700; }
+.badge-sev--high { color: var(--high); background: var(--high-soft); border: 1px solid color-mix(in srgb, var(--high) 40%, transparent); }
+.badge-sev--med  { color: var(--med);  background: var(--med-soft);  border: 1px solid color-mix(in srgb, var(--med) 40%, transparent); }
+.badge-sev--low  { color: var(--low);  background: var(--low-soft);  border: 1px solid color-mix(in srgb, var(--low) 40%, transparent); }
+.badge-sev--info { color: var(--info); background: var(--info-soft); border: 1px solid color-mix(in srgb, var(--info) 40%, transparent); }
+
+/* ---------------------------------------------------------------------------
+   7. Status text — verdict & poc are colored text + glyph, never color-alone
+      glyphs:  ✓ confirmed/reproduced · ~ uncertain/inconclusive ·
+               ✕ rebutted/refuted · ▸ reproduced/by-citation · — none
+   --------------------------------------------------------------------------- */
+.st { font-size: 11px; white-space: nowrap; }
+.st--ok      { color: var(--ok); }
+.st--warn    { color: var(--warn); }
+.st--neutral { color: var(--neutral); }
+.st--none    { color: var(--none); }
+.st--cite    { color: var(--low); }     /* reproduced_by_citation */
+
+/* neutral chips: phase, tool, stage, status */
+.chip {
+  display: inline-block; font-family: var(--mono); font-size: 9.5px;
+  color: var(--muted); background: var(--chip); border: 1px solid var(--border);
+  padding: 2px 8px; border-radius: var(--r-sm); white-space: nowrap;
+}
+.chip--bright { color: var(--fg); }                   /* e.g. phase=triage    */
+.chip--stage  { letter-spacing: 0.05em; }             /* attack-chain stages  */
+.chip--guard-unguarded { color: var(--high); border-color: color-mix(in srgb, var(--high) 40%, transparent); background: var(--high-soft); }
+.chip--guard-guarded   { color: var(--ok); border-color: var(--ok-border); background: var(--ok-soft); }
+
+/* mono file:line reference */
+.fileref {
+  font-family: var(--mono); font-size: var(--fs-mono); color: var(--faint);
+  word-break: break-all; line-height: 1.4;
+}
+.fileref b { color: var(--muted); font-weight: 500; }  /* highlight :line     */
+
+/* ---------------------------------------------------------------------------
+   8. Panels & stat tiles
+   --------------------------------------------------------------------------- */
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); }
+.panel__head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 13px 17px 11px;
+}
+.tile { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); padding: 13px 15px; }
+.tile .n { font-family: var(--mono); font-size: var(--fs-stat); font-weight: 600; }
+.tile .label { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track); color: var(--muted); margin-top: 3px; text-transform: uppercase; }
+.tile .sub { font-family: var(--mono); font-size: 9.5px; color: var(--faint); margin-top: 5px; }
+
+/* severity histogram bar */
+.bar { height: 6px; background: var(--elevated); border-radius: var(--r-xs); overflow: hidden; }
+.bar > span { display: block; height: 100%; border-radius: var(--r-xs); }
+
+/* ---------------------------------------------------------------------------
+   9. Data table — semantic <table>, density via custom props
+   --------------------------------------------------------------------------- */
+.data-table { width: 100%; border-collapse: collapse; background: var(--bg); }
+.data-table-wrap { border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+.data-table th {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint);
+  background: var(--elevated); text-align: left;
+  padding: 9px var(--row-pad-x);
+}
+.data-table th a { color: inherit; }                    /* sortable heads     */
+.data-table th .dir { color: var(--muted); }            /* ↓ / ↑ indicator    */
+.data-table td {
+  padding: var(--row-pad-y) var(--row-pad-x);
+  border-top: 1px solid var(--border-subtle);
+  vertical-align: middle; font-size: 12px; line-height: 1.3;
+}
+.data-table tbody tr:hover { background: var(--panel); }
+.data-table tbody tr.selected { background: var(--accent-soft); }
+.data-table td.id a { font-family: var(--mono); font-size: var(--fs-mono); color: var(--link); }
+
+/* ---------------------------------------------------------------------------
+   10. Controls — filter bar, inputs, buttons, segmented, pagination
+   --------------------------------------------------------------------------- */
+.filterbar { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+
+.select, .input {
+  font-family: var(--mono); font-size: 10.5px; color: var(--fg);
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 6px 11px;
+}
+.input { background: var(--bg); }
+.input::placeholder { color: var(--faint); }
+.select:hover, .input:hover { border-color: var(--muted); }
+
+.btn {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 600; cursor: pointer;
+  color: var(--muted); background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 6px 13px;
+}
+.btn:hover { color: var(--fg); border-color: var(--muted); }
+.btn:active { background: var(--elevated); }
+.btn[disabled] { color: var(--none); cursor: default; border-color: var(--border-subtle); }
+.btn--primary { color: var(--fg); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.btn--primary:hover { border-color: var(--accent); }
+
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: var(--r-sm); overflow: hidden; }
+.segmented button {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em;
+  color: var(--faint); background: transparent; border: 0; padding: 6px 12px; cursor: pointer;
+}
+.segmented button.active { background: var(--accent-soft); color: var(--fg); }
+
+.pagination { display: flex; gap: 6px; font-family: var(--mono); font-size: 10.5px; }
+.pagination a, .pagination span {
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 5px 11px; color: var(--muted);
+}
+.pagination .current { color: var(--fg); background: var(--panel); }
+.pagination .disabled { color: var(--none); }
+
+/* ---------------------------------------------------------------------------
+   11. Taint-chain hop timeline
+   --------------------------------------------------------------------------- */
+.hops { display: flex; flex-direction: column; }
+.hop { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 14px; }
+.hop .rail { display: flex; flex-direction: column; align-items: center; }
+.hop .dot {
+  width: 10px; height: 10px; border-radius: 50%; margin-top: 5px;
+  background: var(--elevated); border: 2px solid var(--muted);
+}
+.hop--source .dot { border-color: var(--high); background: var(--high-soft); }
+.hop--sink   .dot { border-color: var(--crit); background: var(--crit); }
+.hop .line { width: 2px; flex: 1; background: var(--border); min-height: 18px; }
+.hop .role {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  letter-spacing: var(--track); text-transform: uppercase; color: var(--faint);
+}
+.hop pre {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  background: var(--inset); border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--border); border-radius: 0 var(--r) var(--r) 0;
+  /* extra bottom padding so the horizontal scrollbar doesn't crowd the code */
+  padding: 10px 14px 16px; margin: 6px 0 18px; overflow-x: auto; scrollbar-gutter: stable;
+}
+.hop--sink pre { border-left-color: var(--crit); }
+.hop--source pre { border-left-color: var(--high); }
+
+/* ---------------------------------------------------------------------------
+   12. Report prose (rendered markdown — sanitized upstream)
+   --------------------------------------------------------------------------- */
+.prose { max-width: 860px; font-size: var(--fs-prose); line-height: 1.7; color: var(--fg); }
+.prose h1 { font-size: var(--fs-h1); font-weight: 650; margin: 0 0 var(--s4); }
+.prose h2 { font-size: var(--fs-h2); font-weight: 650; margin: var(--s7) 0 var(--s3);
+            padding-top: var(--s4); border-top: 1px solid var(--border-subtle); }
+.prose h3 { font-size: var(--fs-h3); font-weight: 650; margin: var(--s5) 0 var(--s2); }
+.prose p  { margin: 0 0 var(--s3); color: var(--muted); text-wrap: pretty; }
+.prose li { color: var(--muted); margin-bottom: var(--s1); }
+.prose code {
+  font-size: 0.85em; color: var(--fg); background: var(--elevated);
+  padding: 0.1em 0.4em; border-radius: var(--r-xs);
+}
+.prose pre {
+  font-family: var(--mono); font-size: 11.5px; line-height: 1.6; color: var(--muted);
+  background: var(--inset); border: 1px solid var(--border-subtle);
+  border-radius: var(--r); padding: var(--s3) var(--s4) var(--s5); overflow-x: auto; scrollbar-gutter: stable;
+}
+.prose blockquote {
+  margin: var(--s3) 0; padding: var(--s2) var(--s4);
+  border-left: 3px solid var(--accent); background: var(--panel); color: var(--muted);
+  border-radius: 0 var(--r) var(--r) 0;
+}
+.prose table { border-collapse: collapse; width: 100%; margin: var(--s3) 0; }
+.prose th { font-family: var(--mono); font-size: 9.5px; letter-spacing: var(--track);
+            text-transform: uppercase; color: var(--faint); background: var(--elevated);
+            text-align: left; padding: 8px 12px; }
+.prose td { padding: 8px 12px; border-top: 1px solid var(--border-subtle); color: var(--muted); }
+
+/* ---------------------------------------------------------------------------
+   13. Glossary (Help)
+   --------------------------------------------------------------------------- */
+.glossary { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); }
+.glossary > div { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); padding: 13px 16px; }
+.glossary dt { font-size: 13px; font-weight: 650; margin-bottom: 4px; }
+.glossary dd { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+
+/* ---------------------------------------------------------------------------
+   14. Footer & error page
+   --------------------------------------------------------------------------- */
+.site-footer {
+  border-top: 1px solid var(--border-subtle); margin-top: var(--s8);
+  padding: var(--s5) 0; text-align: center;
+  font-family: var(--mono); font-size: 10px; color: var(--faint);
+}
+.site-footer a { color: var(--muted); }
+
+.error-page { min-height: 60vh; display: flex; flex-direction: column;
+              align-items: center; justify-content: center; gap: var(--s3); }
+.error-page .code { font-family: var(--mono); font-size: 44px; font-weight: 700; color: var(--accent); }
+.error-page .msg  { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+/* ===========================================================================
+   codered — local additions (graph view + small utilities)
+   Appended to the Direction A "Signal" token sheet above.
+   =========================================================================== */
+
+/* utility */
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+.nowrap { white-space: nowrap; }
+.breadcrumb { font-family: var(--mono); font-size: var(--fs-mono); color: var(--faint); }
+.breadcrumb a { color: var(--link); }
+
+/* circled-"i" inline hint */
+.info {
+  display: inline-flex; width: 14px; height: 14px; margin-left: 5px;
+  border: 1px solid var(--faint); border-radius: 50%;
+  align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 8px; color: var(--faint); cursor: help;
+  vertical-align: middle;
+}
+
+/* layout grids used by the views (kept here so render markup stays clean) */
+.tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 13px; }
+.breakdowns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 13px; }
+.meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--r); }
+.meta-grid > div { padding: 13px 17px; border-right: 1px solid var(--border-subtle); }
+.meta-grid > div:last-child { border-right: 0; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.label-row { display: grid; grid-template-columns: 56px 28px 1fr; gap: 10px; align-items: center; }
+
+/* engagement header */
+.eng-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; }
+.eng-title { font-size: var(--fs-h1); font-weight: 650; margin-top: 3px; }
+.eng-title .sub { color: var(--muted); font-weight: 400; }
+.eng-meta { display: flex; gap: 14px; align-items: center; margin-top: 8px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+
+/* triage / breakdown panel head */
+.panel__title { font-family: var(--mono); font-size: 9.5px; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+
+/* back-to-top */
+.totop { position: fixed; right: 22px; bottom: 22px; width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center; border-radius: var(--r-sm);
+  background: var(--panel); border: 1px solid var(--border); color: var(--muted);
+  font-family: var(--mono); text-decoration: none; }
+.totop:hover { color: var(--fg); border-color: var(--muted); }
+
+/* ---- Graph (cluster view) ---- */
+.graph-full { width: 100vw; margin-left: calc(50% - 50vw); box-sizing: border-box; padding: 0 18px; }
+.graph-controls { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 0 0 12px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.graph-controls label { display: inline-flex; gap: 6px; align-items: center; }
+.graph-controls select { font-family: var(--mono); font-size: 10.5px; color: var(--fg);
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 6px 11px; }
+#graph-status { margin-left: auto; }
+.graph-wrap { position: relative; border: 1px solid var(--border); border-radius: var(--r);
+  overflow: hidden; background: var(--inset); }
+#cy { width: 100%; height: 72vh; min-height: 460px; display: block; }
+.graph-legend { position: absolute; top: 14px; right: 14px; background: var(--panel);
+  border: 1px solid var(--border); border-radius: var(--r); padding: 12px 15px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted); max-height: 70%; overflow: auto; }
+.legend-title { font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+.legend-row { display: flex; align-items: center; gap: 8px; padding: 1px 0; }
+.legend-swatch { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
