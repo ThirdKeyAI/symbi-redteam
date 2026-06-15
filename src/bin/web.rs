@@ -37,6 +37,11 @@ struct Args {
     /// when omitted.
     #[arg(long)]
     report: Option<PathBuf>,
+
+    /// Journal seal (`redteam-seal`) for the SEALED badge. Auto-located next to
+    /// the journal as `<engagement>.seal` when omitted.
+    #[arg(long)]
+    seal: Option<PathBuf>,
 }
 
 fn auto_journal(db: &std::path::Path) -> Option<PathBuf> {
@@ -49,6 +54,14 @@ fn auto_journal(db: &std::path::Path) -> Option<PathBuf> {
     ]
     .into_iter()
     .find(|cand| cand.exists())
+}
+
+/// The seal sits next to the journal as `<engagement>.seal`.
+fn auto_seal(journal: &std::path::Path, eng: &str) -> PathBuf {
+    journal
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."))
+        .join(format!("{eng}.seal"))
 }
 
 fn auto_report(eng: &str) -> Option<PathBuf> {
@@ -68,6 +81,9 @@ fn main() -> Result<()> {
 
     let journal_path = args.journal.or_else(|| auto_journal(&args.db));
     let report_path = args.report.or_else(|| auto_report(&engagement_id));
+    let seal_path = args
+        .seal
+        .or_else(|| journal_path.as_ref().map(|j| auto_seal(j, &engagement_id)));
 
     println!("redteam-web: engagement {engagement_id} from {}", args.db.display());
     if journal_path.is_none() {
@@ -79,6 +95,7 @@ fn main() -> Result<()> {
         engagement_id,
         journal_path,
         report_path,
+        seal_path,
     };
     serve(state, &args.bind, args.port)
 }

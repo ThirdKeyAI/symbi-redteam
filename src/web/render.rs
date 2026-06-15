@@ -31,6 +31,9 @@ const NAV: &[(&str, &str)] = &[
 
 #[derive(Clone, Copy)]
 pub enum AuditStatus {
+    /// Chain links AND a valid Ed25519 seal attests the current head.
+    Sealed,
+    /// Chain links cleanly, but no valid seal is present.
     Intact,
     Broken,
     Unknown,
@@ -50,6 +53,11 @@ impl AuditInfo {
 
 fn audit_badge(a: &AuditInfo) -> Markup {
     match a.status {
+        AuditStatus::Sealed => html! {
+            span class="audit-badge audit-badge--intact" title="The hash-chained journal links cleanly AND a valid Ed25519 seal attests the current chain head." {
+                "✓ AUDIT SEALED · " (a.entries)
+            }
+        },
         AuditStatus::Intact => html! {
             span class="audit-badge audit-badge--intact" title="The hash-chained audit journal links cleanly from genesis (each entry references the prior entry's hash)." {
                 "✓ AUDIT LINKED · " (a.entries)
@@ -67,6 +75,11 @@ fn audit_badge(a: &AuditInfo) -> Markup {
 fn audit_panel(a: &AuditInfo) -> Markup {
     let broken = matches!(a.status, AuditStatus::Broken);
     let (glyph, head, sub) = match a.status {
+        AuditStatus::Sealed => (
+            "✓",
+            format!("AUDIT CHAIN SEALED — {} ENTRIES", a.entries),
+            "The hash-chained journal links cleanly from genesis AND a valid Ed25519 seal signs the current chain head. A forged-but-relinked journal would fail this seal, because the attacker lacks the engagement private key.".to_string(),
+        ),
         AuditStatus::Intact => (
             "✓",
             format!("AUDIT CHAIN LINKED — {} ENTRIES", a.entries),

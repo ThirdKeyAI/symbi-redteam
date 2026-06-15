@@ -36,6 +36,9 @@ tower-http = { version = "0.5", features = ["set-header"] }
 pulldown-cmark = { version = "0.11", default-features = false, features = ["html"] }
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+# Ed25519 signing / seed verification
+ed25519-dalek = { version = "2", features = ["std", "rand_core"] }
+rand = "0.8"
 
 [dev-dependencies]
 wiremock = "0.6"
@@ -45,3 +48,11 @@ tower = { version = "0.4", features = ["util"] }
 [[bin]]
 name = "redteam-web"
 path = "src/bin/web.rs"
+
+[[bin]]
+name = "redteam-seed"
+path = "src/bin/seed.rs"
+
+[[bin]]
+name = "redteam-seal"
+path = "src/bin/seal.rs"

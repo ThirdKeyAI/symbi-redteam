@@ -6,21 +6,36 @@ use axum::Json;
 use maud::Markup;
 use serde_json::Value;
 
-use crate::web::query::{self, FindingsQuery, Linkage};
+use crate::audit::{self, Linkage, SealStatus};
+use crate::web::query::{self, FindingsQuery};
 use crate::web::render::{self, AuditInfo, AuditStatus};
 use crate::web::{AppError, AppState};
 
-/// Check the hash-chain linkage of the audit journal for the integrity badge.
+/// Compute the audit-integrity badge: a valid seal that matches the current
+/// journal head wins (SEALED); otherwise fall back to hash-chain linkage.
 /// Best effort: a missing/foreign journal renders as "unknown".
 fn audit_info(state: &AppState) -> AuditInfo {
-    match &state.journal_path {
-        Some(p) if p.exists() => match query::verify_chain_linkage(p) {
-            Linkage::Linked(n) => AuditInfo { status: AuditStatus::Intact, entries: n },
-            Linkage::Broken => AuditInfo { status: AuditStatus::Broken, entries: 0 },
-            Linkage::Indeterminate => AuditInfo::unknown(),
-        },
-        _ => AuditInfo::unknown(),
+    let journal = match &state.journal_path {
+        Some(p) if p.exists() => p,
+        _ => return AuditInfo::unknown(),
+    };
+    let linkage = audit::verify_chain_linkage(journal);
+    let entries = match &linkage {
+        Linkage::Linked { entries, .. } => *entries,
+        Linkage::Broken => return AuditInfo { status: AuditStatus::Broken, entries: 0 },
+        Linkage::Indeterminate => return AuditInfo::unknown(),
+    };
+    // Linked — upgrade to SEALED if a valid seal matches the head.
+    if let Some(sp) = state.seal_path.as_ref().filter(|p| p.exists()) {
+        if let Ok(text) = std::fs::read_to_string(sp) {
+            if let Ok(seal) = serde_json::from_str::<audit::Seal>(&text) {
+                if audit::verify_seal(journal, &seal) == SealStatus::Valid {
+                    return AuditInfo { status: AuditStatus::Sealed, entries };
+                }
+            }
+        }
     }
+    AuditInfo { status: AuditStatus::Intact, entries }
 }
 
 pub async fn overview(State(state): State<AppState>) -> Result<Markup, AppError> {

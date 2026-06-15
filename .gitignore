@@ -1,5 +1,11 @@
-# Symbiont runtime state
+# Symbiont runtime state (includes per-engagement private keys under .symbiont/keys/)
 .symbiont/
+
+# Ed25519 private keys must never be committed
+*.priv
+
+# Deployment-specific producer keyring (commit keys/producers.toml.example instead)
+keys/producers.toml
 
 # Scan output (persisted via docker-compose volumes)
 audit-logs/

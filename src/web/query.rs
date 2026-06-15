@@ -2,8 +2,6 @@
 //! (`db/schema.sql`); nothing here mutates. User-supplied filter values are
 //! always bound as parameters, never interpolated.
 
-use std::path::Path;
-
 use anyhow::Result;
 use rusqlite::Connection;
 use serde::Deserialize;
@@ -501,50 +499,6 @@ pub fn graph(conn: &Connection, eng: &str) -> Result<serde_json::Value> {
     Ok(json!({ "nodes": nodes, "edges": edges }))
 }
 
-// ---------------------------------------------------------------------------
-// Audit journal: hash-chain linkage check (no Ed25519 here — the redteam audit
-// trail is hash-chained JSONL, not signed; full crypto verification is
-// delegated to `symbi audit verify`). We confirm each entry's `previous_hash`
-// matches the prior entry's `event_hash`, which detects truncation/reordering.
-// ---------------------------------------------------------------------------
-
-pub enum Linkage {
-    Linked(usize),
-    Broken,
-    /// File present but not in the expected `{event_hash, previous_hash}` shape.
-    Indeterminate,
-}
-
-pub fn verify_chain_linkage(path: &Path) -> Linkage {
-    let text = match std::fs::read_to_string(path) {
-        Ok(t) => t,
-        Err(_) => return Linkage::Indeterminate,
-    };
-    let mut prev_hash: Option<String> = None;
-    let mut n = 0usize;
-    for line in text.lines().filter(|l| !l.trim().is_empty()) {
-        let v: serde_json::Value = match serde_json::from_str(line) {
-            Ok(v) => v,
-            Err(_) => return Linkage::Indeterminate,
-        };
-        let event_hash = v.get("event_hash").and_then(|x| x.as_str());
-        let previous_hash = v.get("previous_hash").and_then(|x| x.as_str());
-        let eh = match event_hash {
-            Some(h) => h.to_string(),
-            None => return Linkage::Indeterminate,
-        };
-        if let Some(prev) = &prev_hash {
-            // previous_hash must reference the prior entry's event_hash.
-            if previous_hash != Some(prev.as_str()) {
-                return Linkage::Broken;
-            }
-        }
-        prev_hash = Some(eh);
-        n += 1;
-    }
-    if n == 0 {
-        Linkage::Indeterminate
-    } else {
-        Linkage::Linked(n)
-    }
-}
+// Audit-journal linkage/sealing lives in the shared `crate::audit` module so the
+// `redteam-seal` binary and the viewer agree on one implementation.
+pub use crate::audit::{verify_chain_linkage, Linkage};

@@ -9,4 +9,7 @@ pub mod evidence_tools;
 pub mod knowledge_tools;
 pub mod reporting;
 pub mod approvals;
+pub mod audit;
+pub mod crypto;
+pub mod seed;
 pub mod web;

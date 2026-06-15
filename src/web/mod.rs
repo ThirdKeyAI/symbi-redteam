@@ -46,6 +46,10 @@ pub struct AppState {
     pub journal_path: Option<PathBuf>,
     /// Path to `report.md`. `None` => the report page shows a generate notice.
     pub report_path: Option<PathBuf>,
+    /// Path to a journal seal (`.symbiont/audit/<id>.seal`). When present and
+    /// valid against the current journal head, the audit badge upgrades to
+    /// SEALED.
+    pub seal_path: Option<PathBuf>,
 }
 
 impl AppState {

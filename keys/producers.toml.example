@@ -1,0 +1,14 @@
+# Pinned upstream-producer public keys for signed validation seeds.
+#
+# redteam verifies an incoming engagement-seed.json against the producer key
+# named by the seed's `signature.key_id`. These are PUBLIC keys (Ed25519, hex
+# of the 32-byte verifying key) — safe to commit. Private keys live only on the
+# producer side.
+#
+# Copy this file to `keys/producers.toml` and fill in the real key(s), or set
+# the env var CODERED_PRODUCER_PUBKEYS="producer-key-1=<hex>,producer-key-2=<hex>".
+# Rotate by adding a new key_id and updating the producer; keep old ids until
+# all seeds signed under them are processed.
+
+[producers]
+# producer-key-1 = "0000000000000000000000000000000000000000000000000000000000000000"
